@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { MapPin, Filter, X, Info } from 'lucide-react';
 import { Button } from './ui/button';
@@ -56,6 +56,9 @@ const LiveIssuesMap = ({ issues, onIssueSelect, height = '600px' }: LiveIssuesMa
       </svg>
     `)}`;
   };
+
+  const createMarker = useCallback((issue: IssueReport, position: { lat: number; lng: number }) => {
+    if (!googleMapRef.current) return;
 
   // Initialize map
   useEffect(() => {
@@ -140,10 +143,7 @@ const LiveIssuesMap = ({ issues, onIssueSelect, height = '600px' }: LiveIssuesMa
     if (bounds.getNorthEast().lat() !== bounds.getSouthWest().lat()) {
       googleMapRef.current.fitBounds(bounds);
     }
-  }, [filteredIssues, isLoaded]);
-
-  const createMarker = (issue: IssueReport, position: { lat: number; lng: number }) => {
-    if (!googleMapRef.current) return;
+  }, [filteredIssues, isLoaded, createMarker, toast]);
 
     const marker = new google.maps.Marker({
       position,
