@@ -71,14 +71,14 @@ const AdminUserManagement = () => {
       if (data && data.length > 0) {
         const hasIsAdminColumn = 'is_admin' in (data[0] || {});
         if (hasIsAdminColumn) {
-          adminData = data.filter((profile: any) => profile.is_admin === true);
+          adminData = data.filter((profile) => profile.is_admin === true);
         } else {
           adminData = [];
         }
       }
 
       if (adminData && adminData.length > 0) {
-        const adminUsers: AdminUser[] = adminData.map((profile: any) => {
+        const adminUsers: AdminUser[] = adminData.map((profile) => {
           return {
             id: profile.id,
             email: profile.email || `${profile.username}@example.com`,
@@ -93,11 +93,11 @@ const AdminUserManagement = () => {
       } else {
         setAdmins([]);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching admins:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch admin users. " + (error.message || ''),
+        description: "Failed to fetch admin users. " + (error instanceof Error ? error.message : String(error)),
         variant: "destructive",
       });
     } finally {
@@ -220,11 +220,11 @@ const AdminUserManagement = () => {
       });
       setIsDialogOpen(false);
       fetchAdmins();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating admin user:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create admin user.",
+        description: error instanceof Error ? error.message : "Failed to create admin user.",
         variant: "destructive",
       });
     } finally {
@@ -271,7 +271,7 @@ const AdminUserManagement = () => {
       });
 
       fetchAdmins();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error removing admin:', error);
       toast({
         title: "Error",
