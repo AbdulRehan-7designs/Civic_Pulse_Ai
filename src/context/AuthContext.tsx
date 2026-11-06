@@ -47,7 +47,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       // First, try to get profile from profiles table
       let profileData = null;
-      let profileError = null;
       
       try {
         const { data, error } = await supabase
@@ -57,14 +56,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .maybeSingle(); // Use maybeSingle to avoid errors if profile doesn't exist
         
         profileData = data;
-        profileError = error;
         
         // Only treat as error if it's not a "not found" error
         if (error && error.code !== 'PGRST116' && error.code !== 'PGRST205') {
           console.warn('Error fetching profile:', error.message);
         }
       } catch (err: any) {
-        profileError = err;
         // Don't log if it's just a table not found error
         if (err.code !== 'PGRST205' && err.code !== 'PGRST116') {
           console.warn('Exception fetching profile:', err.message);
@@ -99,7 +96,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         issues_reported: profileData?.issues_reported || 0,
         issues_voted: profileData?.issues_voted || 0,
       };
-    } catch (error: any) {
+    } catch {
       // Silently handle all errors and return default profile
       // Don't log errors to console to prevent spam
       const role: UserRole = 'citizen';
@@ -253,6 +250,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       setLoading(true);
       const redirectUrl = `${window.location.origin}/`;
+      // Every self-service signup is a citizen account. Staff roles are assigned
+      // later by an existing administrator through the protected role RPC.
       
       const { data, error } = await supabase.auth.signUp({
         email,
