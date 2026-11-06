@@ -26,7 +26,7 @@ import AdminUserManagement from "@/components/admin/AdminUserManagement";
 const toReport = (issue: Issue): IssueReport => ({
   id: issue.id, title: issue.title, description: issue.description, category: issue.category,
   status: issue.status.replace('_', '-') as IssueReport['status'],
-  reportedAt: issue.created_at, reportedBy: issue.user_id, votes: issue.votes,
+  reportedAt: issue.created_at, reportedBy: issue.user_id, votes: issue.votes, area: issue.area,
   location: issue.coordinates ? { address: issue.location, lng: issue.coordinates[0], lat: issue.coordinates[1] } : issue.location,
   images: issue.image_url ? [issue.image_url] : [], videos: issue.media_url ? [issue.media_url] : [],
 });
@@ -42,7 +42,7 @@ const Admin = () => {
       issue.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || issue.status === statusFilter;
     const locationText = typeof issue.location === "string" ? issue.location : issue.location.address;
-    const matchesArea = selectedArea === "all" || locationText.toLowerCase().includes(selectedArea);
+    const matchesArea = selectedArea === "all" || (issue.area || locationText).toLowerCase().includes(selectedArea);
     return matchesSearch && matchesStatus && matchesArea;
   });
 
