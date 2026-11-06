@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Loader2, Filter, MapPin } from 'lucide-react';
 import { Button } from './ui/button';
@@ -39,7 +39,7 @@ const HotspotMap = ({ issues, height = '500px' }: HotspotMapProps) => {
   );
 
   // Process issues into hotspot data points
-  const processHotspotData = (): HotspotData[] => {
+  const processHotspotData = useCallback((): HotspotData[] => {
     const locationMap = new Map<string, HotspotData>();
 
     filteredIssues.forEach((issue) => {
@@ -79,7 +79,7 @@ const HotspotMap = ({ issues, height = '500px' }: HotspotMapProps) => {
     });
 
     return Array.from(locationMap.values());
-  };
+  }, [filteredIssues]);
 
   // Initialize map
   useEffect(() => {
@@ -214,7 +214,7 @@ const HotspotMap = ({ issues, height = '500px' }: HotspotMapProps) => {
         googleMapRef.current.fitBounds(bounds);
       }
     }
-  }, [filteredIssues, isLoaded, viewMode]);
+  }, [filteredIssues, isLoaded, viewMode, processHotspotData]);
 
   return (
     <Card className="w-full overflow-hidden">
