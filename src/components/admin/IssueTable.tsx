@@ -38,11 +38,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface IssueTableProps {
   issues: IssueReport[];
+  onIssueUpdated?: () => Promise<unknown> | void;
 }
 
 type StatusAction = 'verified' | 'in-progress' | 'resolved' | 'fake' | 'delete';
 
-const IssueTable = ({ issues }: IssueTableProps) => {
+const IssueTable = ({ issues, onIssueUpdated }: IssueTableProps) => {
   const [selectedIssue, setSelectedIssue] = useState<IssueReport | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -51,61 +52,44 @@ const IssueTable = ({ issues }: IssueTableProps) => {
 
   const handleStatusChange = async (issueId: string, action: StatusAction) => {
     try {
-      let message = '';
-      let description = '';
-      let newStatus = '';
-      
-      switch (action) {
-        case 'verified':
-          message = 'Issue Verified';
-          description = 'The report has been marked as verified';
-          newStatus = 'verified';
-          break;
-        case 'in-progress':
-          message = 'Issue In Progress';
-          description = 'The report has been marked as in progress';
-          newStatus = 'in-progress';
-          break;
-        case 'resolved':
-          message = 'Issue Resolved';
-          description = 'The report has been marked as resolved';
-          newStatus = 'resolved';
-          break;
-        case 'fake':
-          message = 'Issue Marked as Fake';
-          description = 'The report has been identified as invalid';
-          newStatus = 'fake';
-          break;
-        case 'delete':
-          message = 'Issue Deleted';
-          description = 'The report has been removed from the system';
-          // In a real app, we would delete the issue from the database
-          break;
+      if (action === 'delete') {
+        const { error } = await supabase.from('issues').delete().eq('id', issueId);
+        if (error) throw error;
+        toast({ title: 'Report deleted', description: 'The report was removed from Civic Pulse.' });
+        await onIssueUpdated?.();
+        return;
       }
-      
-      // In a real app with real Supabase data, update status in the database
-      if (action !== 'delete') {
-        // Simulate a database update for now
-        // But here's how we would update it in a real app:
-        // const { error } = await supabase
-        //   .from('issues')
-        //   .update({ status: newStatus })
-        //   .eq('id', issueId);
-        // 
-        // if (error) throw error;
+      const statusMap: Record<Exclude<StatusAction, 'delete'>, string> = {
+        verified: 'verified', 'in-progress': 'in_progress', resolved: 'resolved', fake: 'fake',
+      };
+      const newStatus = statusMap[action];
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Please sign in again.');
+
+      const payload: { status: string; resolved_at?: string | null; resolved_by?: string | null } = { status: newStatus };
+      if (newStatus === 'resolved') {
+        payload.resolved_at = new Date().toISOString();
+        payload.resolved_by = authData.user.id;
+      } else {
+        payload.resolved_at = null;
+        payload.resolved_by = null;
       }
-      
-      toast({
-        title: message,
-        description: description,
+      const { error } = await supabase.from('issues').update(payload).eq('id', issueId);
+      if (error) throw error;
+
+      const { error: historyError } = await supabase.from('issue_updates').insert({
+        issue_id: issueId, status: newStatus,
+        update_description: `Status changed to ${newStatus.replace('_', ' ')} by authorized staff.`,
+        updated_by: authData.user.id, user_id: authData.user.id,
       });
+      if (historyError) console.warn('Status saved but history insert failed:', historyError.message);
+
+      toast({ title: 'Report status updated', description: `The report is now ${newStatus.replace('_', ' ')}.` });
+      await onIssueUpdated?.();
     } catch (error) {
-      console.error('Error updating issue status:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update issue status.",
-        variant: "destructive",
-      });
+      console.error('Error updating report:', error);
+      toast({ title: 'Update failed', description: error instanceof Error ? error.message : 'Could not update the report.', variant: 'destructive' });
     }
   };
 
@@ -175,7 +159,7 @@ const IssueTable = ({ issues }: IssueTableProps) => {
     },
     {
       accessorKey: "votes",
-      header: "Votes",
+      header: "Citizen confirmations",
       cell: ({ row }) => <div className="font-semibold">{row.original.votes}</div>,
     },
     {
