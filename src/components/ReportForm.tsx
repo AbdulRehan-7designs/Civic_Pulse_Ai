@@ -74,7 +74,7 @@ const ReportForm = ({ onSubmitSuccess }: ReportFormProps) => {
       }
       setPermissionsRequested(true);
     }
-  }, []);
+  }, [permissionsRequested]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
