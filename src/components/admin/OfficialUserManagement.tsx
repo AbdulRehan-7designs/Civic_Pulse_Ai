@@ -88,7 +88,7 @@ const OfficialUserManagement = () => {
         const officialUsers: OfficialUser[] = officialData.map((profile) => {
           return {
             id: profile.id,
-            email: profile.email || `${profile.username}@example.com`,
+            email: ('email' in profile && typeof profile.email === 'string' && profile.email) || `${profile.username}@example.com`,
             username: profile.username,
             full_name: profile.full_name,
             created_at: profile.created_at || new Date().toISOString(),
