@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { issueCategories } from "@/utils/mockData";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { Upload, Loader2, Lightbulb, BrainCircuit, Sparkles, Tags, BadgeCheck, MapPin } from "lucide-react";
 import AIClassifier from './AIClassifier';
 import MultiMediaUploader from './MultiMediaUploader';
@@ -56,7 +56,6 @@ const ReportForm = ({ onSubmitSuccess }: ReportFormProps) => {
   const [location, setLocation] = useState<Location | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const { toast } = useToast();
   const { createIssue } = useIssues({ autoFetch: false });
 
   // Request relevant permissions when the form loads
