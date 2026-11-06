@@ -75,7 +75,7 @@ const OfficialUserManagement = () => {
         // Check if is_official column exists by checking first item
         const hasIsOfficialColumn = 'is_official' in (data[0] || {});
         if (hasIsOfficialColumn) {
-          officialData = data.filter((profile: any) => profile.is_official === true);
+          officialData = data.filter((profile) => profile.is_official === true);
         } else {
           // Fallback: if column doesn't exist, return empty array
           // In production, you'd want to run the migration first
@@ -85,7 +85,7 @@ const OfficialUserManagement = () => {
 
       if (officialData && officialData.length > 0) {
         // Map profiles to official users
-        const officialUsers: OfficialUser[] = officialData.map((profile: any) => {
+        const officialUsers: OfficialUser[] = officialData.map((profile) => {
           return {
             id: profile.id,
             email: profile.email || `${profile.username}@example.com`,
@@ -100,11 +100,11 @@ const OfficialUserManagement = () => {
       } else {
         setOfficials([]);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching officials:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch official users. " + (error.message || ''),
+        description: "Failed to fetch official users. " + (error instanceof Error ? error.message : String(error)),
         variant: "destructive",
       });
     } finally {
@@ -234,11 +234,11 @@ const OfficialUserManagement = () => {
       });
       setIsDialogOpen(false);
       fetchOfficials(); // Refresh list
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating official user:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create official user.",
+        description: error instanceof Error ? error.message : "Failed to create official user.",
         variant: "destructive",
       });
     } finally {
@@ -288,7 +288,7 @@ const OfficialUserManagement = () => {
       });
 
       fetchOfficials(); // Refresh list
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error removing official:', error);
       toast({
         title: "Error",
