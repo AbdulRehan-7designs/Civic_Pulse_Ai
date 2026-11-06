@@ -82,7 +82,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       let isAdmin = false;
       let isOfficial = false;
       const fullName = profileData?.full_name || userRef.current?.user_metadata?.full_name || userRef.current?.email?.split('@')[0] || 'User';
-      const username = profileData?.username || user?.user_metadata?.username || user?.email?.split('@')[0] || 'user';
+      const username = profileData?.username || userRef.current?.user_metadata?.username || userRef.current?.email?.split('@')[0] || 'user';
 
       if (profileData?.is_admin === true) {
         role = 'admin';
@@ -94,7 +94,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       return {
         id: userId,
-        email: user?.email || '',
+        email: userRef.current?.email || '',
         username: username,
         full_name: fullName,
         avatar_url: profileData?.avatar_url || null,
@@ -110,9 +110,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const role: UserRole = 'citizen';
       return {
         id: userId,
-        email: user?.email || '',
-        username: user?.email?.split('@')[0] || 'user',
-        full_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User',
+        email: userRef.current?.email || '',
+        username: userRef.current?.email?.split('@')[0] || 'user',
+        full_name: userRef.current?.user_metadata?.full_name || userRef.current?.email?.split('@')[0] || 'User',
         avatar_url: null,
         role: role,
         is_admin: false,
@@ -128,7 +128,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
+        console.log('Auth state changed:', event, session?.userRef.current?.email);
         setSession(session);
         setUser(session?.user ?? null);
         
