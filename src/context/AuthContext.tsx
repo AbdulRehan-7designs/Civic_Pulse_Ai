@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
@@ -39,11 +39,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const userRef = useRef(user);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   // Fetch user profile
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     try {
       // First, try to get profile from profiles table
       let profileData = null;
@@ -76,7 +81,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       let role: UserRole = 'citizen';
       let isAdmin = false;
       let isOfficial = false;
-      const fullName = profileData?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+      const fullName = profileData?.full_name || userRef.current?.user_metadata?.full_name || userRef.current?.email?.split('@')[0] || 'User';
       const username = profileData?.username || user?.user_metadata?.username || user?.email?.split('@')[0] || 'user';
 
       if (profileData?.is_admin === true) {
@@ -116,7 +121,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         issues_voted: 0,
       };
     }
-  };
+  }, []);
 
   // Initialize auth state
   useEffect(() => {
@@ -192,7 +197,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchProfile, navigate]);
 
   const login = async (email: string, password: string) => {
     try {
