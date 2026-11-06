@@ -20,7 +20,7 @@ const generateMockData = () => {
   
   // For line/bar charts (time-based)
   const timeData = months.map(month => {
-    const obj: Record<string, any> = { month };
+    const obj: Record<string, string | number> = { month };
     categories.forEach(cat => {
       obj[cat] = Math.floor(Math.random() * 100) + 10;
     });
