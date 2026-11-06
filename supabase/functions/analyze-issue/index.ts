@@ -71,12 +71,12 @@ serve(async (req) => {
       similar_issue_ids: similarIssues?.map(issue => issue.id) || [],
       similarity_scores: generateSimilarityScores(similarIssues),
       duplicate_score: 0.15 + (Math.random() * 0.25),
-      priority_score: calculatePriorityScore(issueData),
-      impact_assessment: generateImpactAssessment(issueData),
-      urgency_level: determineUrgencyLevel(issueData),
+      priority_score: calculatePriorityScore(),
+      impact_assessment: generateImpactAssessment(),
+      urgency_level: determineUrgencyLevel(),
       assigned_departments: assignDepartments(issueData.category),
-      estimated_response_time: estimateResponseTime(issueData),
-      resource_requirements: calculateResourceRequirements(issueData),
+      estimated_response_time: estimateResponseTime(),
+      resource_requirements: calculateResourceRequirements(),
       detected_patterns: {},
       seasonal_factors: {},
       trend_indicators: {}
@@ -166,7 +166,7 @@ function extractKeywords(text: string): string[] {
   return keywords;
 }
 
-function generateSimilarityScores(similarIssues: any[] | null): Record<string, number> {
+function generateSimilarityScores(similarIssues: Array<{ id: string }> | null): Record<string, number> {
   if (!similarIssues || similarIssues.length === 0) {
     return {};
   }
@@ -180,12 +180,12 @@ function generateSimilarityScores(similarIssues: any[] | null): Record<string, n
   return scores;
 }
 
-function calculatePriorityScore(issue: any): number {
+function calculatePriorityScore(): number {
   // In a real app, this would use factors like severity, location, etc.
   return Math.floor(Math.random() * 5) + 1;
 }
 
-function generateImpactAssessment(issue: any): string {
+function generateImpactAssessment(): string {
   const impacts = [
     "Low impact on daily activities. Can be addressed during routine maintenance.",
     "Moderate impact affecting pedestrian safety. Requires attention within the standard timeline.",
@@ -197,7 +197,7 @@ function generateImpactAssessment(issue: any): string {
   return impacts[Math.floor(Math.random() * impacts.length)];
 }
 
-function determineUrgencyLevel(issue: any): string {
+function determineUrgencyLevel(): string {
   const levels = ["Low", "Medium", "High", "Critical"];
   return levels[Math.floor(Math.random() * levels.length)];
 }
@@ -217,12 +217,12 @@ function assignDepartments(category: string): string[] {
   return departmentMap[category] || ['General Maintenance', 'Community Services'];
 }
 
-function estimateResponseTime(issue: any): number {
+function estimateResponseTime(): number {
   // Return hours for response time
   return 24 + Math.floor(Math.random() * 72);
 }
 
-function calculateResourceRequirements(issue: any) {
+function calculateResourceRequirements() {
   const personnel = 1 + Math.floor(Math.random() * 5);
   const hours = personnel * (4 + Math.floor(Math.random() * 8));
   
