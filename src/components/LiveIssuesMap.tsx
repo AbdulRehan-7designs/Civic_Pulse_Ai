@@ -60,6 +60,54 @@ const LiveIssuesMap = ({ issues, onIssueSelect, height = '600px' }: LiveIssuesMa
   const createMarker = useCallback((issue: IssueReport, position: { lat: number; lng: number }) => {
     if (!googleMapRef.current) return;
 
+    const marker = new google.maps.Marker({
+      position,
+      map: googleMapRef.current,
+      title: issue.title,
+      icon: {
+        url: getStatusIcon(issue.status),
+        scaledSize: new google.maps.Size(32, 32),
+        anchor: new google.maps.Point(16, 16)
+      },
+      animation: google.maps.Animation.DROP
+    });
+
+    // Create info window content
+    const content = `
+      <div style="padding: 8px; min-width: 200px;">
+        <h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: bold;">${issue.title}</h3>
+        <p style="margin: 0 0 8px 0; font-size: 12px; color: #666;">${issue.category}</p>
+        <p style="margin: 0 0 8px 0; font-size: 11px; color: #999;">${issue.description.substring(0, 100)}...</p>
+        <div style="display: flex; gap: 4px; margin-top: 8px;">
+          <span style="background: ${getStatusColor(issue.status)}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px;">
+            ${issue.status}
+          </span>
+          <span style="background: #e5e7eb; padding: 2px 8px; border-radius: 4px; font-size: 10px;">
+            ${issue.votes} votes
+          </span>
+        </div>
+      </div>
+    `;
+
+    const infoWindow = new google.maps.InfoWindow({
+      content
+    });
+
+    marker.addListener('click', () => {
+      // Close all other info windows
+      infoWindowsRef.current.forEach(iw => iw.close());
+      
+      infoWindow.open(googleMapRef.current, marker);
+      
+      if (onIssueSelect) {
+        onIssueSelect(issue);
+      }
+    });
+
+    markersRef.current.push(marker);
+    infoWindowsRef.current.push(infoWindow);
+  }, [onIssueSelect]);
+
   // Initialize map
   useEffect(() => {
     const initMap = async () => {
@@ -143,55 +191,7 @@ const LiveIssuesMap = ({ issues, onIssueSelect, height = '600px' }: LiveIssuesMa
     if (bounds.getNorthEast().lat() !== bounds.getSouthWest().lat()) {
       googleMapRef.current.fitBounds(bounds);
     }
-  }, [filteredIssues, isLoaded, createMarker, toast]);
-
-    const marker = new google.maps.Marker({
-      position,
-      map: googleMapRef.current,
-      title: issue.title,
-      icon: {
-        url: getStatusIcon(issue.status),
-        scaledSize: new google.maps.Size(32, 32),
-        anchor: new google.maps.Point(16, 16)
-      },
-      animation: google.maps.Animation.DROP
-    });
-
-    // Create info window content
-    const content = `
-      <div style="padding: 8px; min-width: 200px;">
-        <h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: bold;">${issue.title}</h3>
-        <p style="margin: 0 0 8px 0; font-size: 12px; color: #666;">${issue.category}</p>
-        <p style="margin: 0 0 8px 0; font-size: 11px; color: #999;">${issue.description.substring(0, 100)}...</p>
-        <div style="display: flex; gap: 4px; margin-top: 8px;">
-          <span style="background: ${getStatusColor(issue.status)}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px;">
-            ${issue.status}
-          </span>
-          <span style="background: #e5e7eb; padding: 2px 8px; border-radius: 4px; font-size: 10px;">
-            ${issue.votes} votes
-          </span>
-        </div>
-      </div>
-    `;
-
-    const infoWindow = new google.maps.InfoWindow({
-      content
-    });
-
-    marker.addListener('click', () => {
-      // Close all other info windows
-      infoWindowsRef.current.forEach(iw => iw.close());
-      
-      infoWindow.open(googleMapRef.current, marker);
-      
-      if (onIssueSelect) {
-        onIssueSelect(issue);
-      }
-    });
-
-    markersRef.current.push(marker);
-    infoWindowsRef.current.push(infoWindow);
-  };
+  }, [filteredIssues, isLoaded, createMarker]);
 
   return (
     <Card className="w-full overflow-hidden">
