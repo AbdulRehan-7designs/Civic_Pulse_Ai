@@ -90,10 +90,16 @@ export const useIssues = ({ autoFetch = true }: UseIssuesOptions = {}) => {
         toast({ title: 'Already voted', description: 'You have already voted on this issue.' });
         return;
       }
+      // The database trigger increments issues.votes atomically after this insert.
+      // Do not call a second increment RPC, or each citizen vote would count twice.
       const { error: voteError } = await supabase.from('votes').insert({ issue_id: issueId, user_id: authData.user.id });
-      if (voteError) throw voteError;
-      const { error: incrementError } = await supabase.rpc('increment_votes', { issue_id: issueId });
-      if (incrementError) throw incrementError;
+      if (voteError) {
+        if (voteError.code === '23505') {
+          toast({ title: 'Already voted', description: 'You have already confirmed this report.' });
+          return;
+        }
+        throw voteError;
+      }
       await fetchIssues();
       toast({ title: 'Vote recorded', description: 'Thank you for supporting this report.' });
     } catch (error) {
