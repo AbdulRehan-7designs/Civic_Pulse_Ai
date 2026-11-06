@@ -1,5 +1,5 @@
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, X, Minimize, Maximize, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
@@ -98,7 +98,7 @@ const FloatingChatbot = () => {
     }
   };
   
-  const handleMouseMove = (e: MouseEvent) => {
+  const handleMouseMove = useCallback((e: MouseEvent) => {
     if (isDragging) {
       const newX = Math.max(0, Math.min(window.innerWidth - 380, e.clientX - dragStart.x));
       const newY = Math.max(0, Math.min(window.innerHeight - 100, e.clientY - dragStart.y));
@@ -108,11 +108,11 @@ const FloatingChatbot = () => {
         y: newY
       });
     }
-  };
+  }, [isDragging, dragStart]);
   
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     setIsDragging(false);
-  };
+  }, []);
   
   // Add and remove event listeners for dragging
   useEffect(() => {
@@ -123,7 +123,7 @@ const FloatingChatbot = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, dragStart]);
+  }, [handleMouseMove, handleMouseUp]);
   
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
