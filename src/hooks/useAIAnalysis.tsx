@@ -1,7 +1,7 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 
 export interface AIAnalysis {
   id: string;
@@ -34,9 +34,8 @@ export function useAIAnalysis() {
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isModelReady, setIsModelReady] = useState(true);
-  const { toast } = useToast();
 
-  const analyzeIssue = async (issueId: string) => {
+  const analyzeIssue = useCallback(async (issueId: string) => {
     setIsAnalyzing(true);
     
     try {
@@ -84,9 +83,9 @@ export function useAIAnalysis() {
     } finally {
       setIsAnalyzing(false);
     }
-  };
+  }, []);
 
-  const fetchAnalysis = async (issueId: string) => {
+  const fetchAnalysis = useCallback(async (issueId: string) => {
     try {
       const { data, error } = await supabase
         .from('ai_analyses')
@@ -112,7 +111,7 @@ export function useAIAnalysis() {
       });
       return null;
     }
-  };
+  }, []);
 
   // Image analysis function
   const analyzeImage = async (imageUrl: string): Promise<string[]> => {
