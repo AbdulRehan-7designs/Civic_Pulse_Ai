@@ -1,7 +1,7 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 
@@ -39,11 +39,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   // Fetch user profile
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     try {
       // First, try to get profile from profiles table
       let profileData = null;
@@ -116,7 +115,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         issues_voted: 0,
       };
     }
-  };
+  }, [user]);
 
   // Initialize auth state
   useEffect(() => {
@@ -192,7 +191,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchProfile, navigate]);
 
   const login = async (email: string, password: string) => {
     try {
