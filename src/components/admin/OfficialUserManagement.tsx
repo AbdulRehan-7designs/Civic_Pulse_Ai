@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +54,7 @@ const OfficialUserManagement = () => {
   });
 
   // Fetch official users
-  const fetchOfficials = async () => {
+  const fetchOfficials = useCallback(async () => {
     setIsLoading(true);
     try {
       // Fetch from profiles table where is_official is true
@@ -109,11 +109,11 @@ const OfficialUserManagement = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchOfficials();
-  }, []);
+  }, [fetchOfficials]);
 
   // Create official user
   const createOfficialUser = async () => {
