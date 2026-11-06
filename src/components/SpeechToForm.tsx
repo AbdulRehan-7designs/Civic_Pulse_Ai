@@ -62,20 +62,17 @@ const SpeechToForm = ({ onFormDataExtracted }: SpeechToFormProps) => {
       };
 
       recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
-        let interimTranscript = '';
-        let finalTranscript = '';
+        // Rebuild the transcript from all results so earlier final phrases
+        // are not lost when the browser emits a later recognition event.
+        const completeTranscript = Array.from(
+          { length: event.results.length },
+          (_, index) => event.results[index][0].transcript
+        )
+          .join(' ')
+          .trim();
 
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript + ' ';
-          } else {
-            interimTranscript += transcript;
-          }
-        }
-
-        transcriptRef.current = finalTranscript || interimTranscript;
-        setTranscript(transcriptRef.current);
+        transcriptRef.current = completeTranscript;
+        setTranscript(completeTranscript);
       };
 
       recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
