@@ -24,7 +24,7 @@ type AuthContextType = {
   user: User | null;
   profile: UserProfile | null;
   session: Session | null;
-  login: (email: string, password: string) => Promise<{ error?: any }>;
+  login: (email: string, password: string) => Promise<{ error?: unknown }>;
   signUp: (email: string, password: string, userData: { username: string; full_name: string; role: UserRole }) => Promise<{ error?: any }>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
@@ -61,10 +61,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (error && error.code !== 'PGRST116' && error.code !== 'PGRST205') {
           console.warn('Error fetching profile:', error.message);
         }
-      } catch (err: any) {
-        // Don't log if it's just a table not found error
-        if (err.code !== 'PGRST205' && err.code !== 'PGRST116') {
-          console.warn('Exception fetching profile:', err.message);
+      } catch (err: unknown) {
+        // Don't log if it's just a table not found error.
+        const errorCode = typeof err === 'object' && err !== null && 'code' in err
+          ? err.code
+          : undefined;
+        if (errorCode !== 'PGRST205' && errorCode !== 'PGRST116') {
+          console.warn('Exception fetching profile:', err instanceof Error ? err.message : String(err));
         }
       }
 
@@ -73,8 +76,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       let role: UserRole = 'citizen';
       let isAdmin = false;
       let isOfficial = false;
-      let fullName = profileData?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
-      let username = profileData?.username || user?.user_metadata?.username || user?.email?.split('@')[0] || 'user';
+      const fullName = profileData?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+      const username = profileData?.username || user?.user_metadata?.username || user?.email?.split('@')[0] || 'user';
 
       if (profileData?.is_admin === true) {
         role = 'admin';
@@ -234,7 +237,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       return { error: null };
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Login Failed",
         description: "An unexpected error occurred.",
