@@ -23,7 +23,7 @@ import {
   BrainCircuit,
   Sparkles
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -47,7 +47,6 @@ const IssueTable = ({ issues, onIssueUpdated }: IssueTableProps) => {
   const [selectedIssue, setSelectedIssue] = useState<IssueReport | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const { toast } = useToast();
   const { analyzeIssue } = useAIAnalysis();
 
   const handleStatusChange = useCallback(async (issueId: string, action: StatusAction) => {
