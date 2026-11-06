@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { BrainCircuit, Camera, Loader2, Video } from 'lucide-react';
 import * as tf from '@tensorflow/tfjs';
 
@@ -27,7 +27,6 @@ const VideoAIDetection = ({ onDetectionResults }: VideoAIDetectionProps) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
-  const { toast } = useToast();
 
   // Load the COCO-SSD model on component mount
   useEffect(() => {
