@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
@@ -50,7 +50,7 @@ const IssueTable = ({ issues, onIssueUpdated }: IssueTableProps) => {
   const { toast } = useToast();
   const { analyzeIssue } = useAIAnalysis();
 
-  const handleStatusChange = async (issueId: string, action: StatusAction) => {
+  const handleStatusChange = useCallback(async (issueId: string, action: StatusAction) => {
     try {
       if (action === 'delete') {
         const { error } = await supabase.from('issues').delete().eq('id', issueId);
@@ -91,14 +91,14 @@ const IssueTable = ({ issues, onIssueUpdated }: IssueTableProps) => {
       console.error('Error updating report:', error);
       toast({ title: 'Update failed', description: error instanceof Error ? error.message : 'Could not update the report.', variant: 'destructive' });
     }
-  };
+  }, [onIssueUpdated]);
 
   const viewDetails = (issue: IssueReport) => {
     setSelectedIssue(issue);
     setIsViewDialogOpen(true);
   };
 
-  const handleAnalyze = async (issue: IssueReport) => {
+  const handleAnalyze = useCallback(async (issue: IssueReport) => {
     setIsAnalyzing(true);
     try {
       await analyzeIssue(issue.id);
@@ -116,7 +116,7 @@ const IssueTable = ({ issues, onIssueUpdated }: IssueTableProps) => {
     } finally {
       setIsAnalyzing(false);
     }
-  };
+  }, [analyzeIssue]);
 
   // Define table columns
   const columns: ColumnDef<IssueReport>[] = useMemo(() => [
@@ -228,7 +228,7 @@ const IssueTable = ({ issues, onIssueUpdated }: IssueTableProps) => {
         );
       },
     },
-  ], [isAnalyzing]);
+  ], [isAnalyzing, handleAnalyze, handleStatusChange]);
 
   return (
     <div className="space-y-4">
