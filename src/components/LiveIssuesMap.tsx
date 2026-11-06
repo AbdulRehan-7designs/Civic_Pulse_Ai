@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { MapPin, Filter, X, Info } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { IssueReport } from '@/utils/mockData';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { loadGoogleMaps } from '@/utils/googleMapsLoader';
@@ -23,7 +23,6 @@ const LiveIssuesMap = ({ issues, onIssueSelect, height = '600px' }: LiveIssuesMa
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const { toast } = useToast();
 
   // Get unique categories and statuses
   const categories = ['all', ...new Set(issues.map(issue => issue.category))];
