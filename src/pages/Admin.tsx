@@ -1,11 +1,12 @@
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
-import { mockIssues } from "@/utils/mockData";
+import { IssueReport } from "@/utils/mockData";
+import { useIssues, Issue } from "@/hooks/useIssues";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import IssueFilters from "@/components/admin/IssueFilters";
 import IssueTable from "@/components/admin/IssueTable";
@@ -22,23 +23,26 @@ import OfficialUserManagement from "@/components/admin/OfficialUserManagement";
 import AdminUserManagement from "@/components/admin/AdminUserManagement";
 
 // Enhanced Admin component with interactive and AI features
+const toReport = (issue: Issue): IssueReport => ({
+  id: issue.id, title: issue.title, description: issue.description, category: issue.category,
+  status: issue.status.replace('_', '-') as IssueReport['status'],
+  reportedAt: issue.created_at, reportedBy: issue.user_id, votes: issue.votes,
+  location: issue.coordinates ? { address: issue.location, lng: issue.coordinates[0], lat: issue.coordinates[1] } : issue.location,
+  images: issue.image_url ? [issue.image_url] : [], videos: issue.media_url ? [issue.media_url] : [],
+});
+
 const Admin = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedArea, setSelectedArea] = useState("all");
-
-  // Filter issues based on search term and status
-  const filteredIssues = mockIssues.filter(issue => {
-    const matchesSearch = 
-      issue.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const { issues, loading, fetchIssues } = useIssues();
+  const reports = useMemo(() => issues.map(toReport), [issues]);
+  const filteredIssues = reports.filter(issue => {
+    const matchesSearch = issue.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       issue.description.toLowerCase().includes(searchTerm.toLowerCase());
-    
     const matchesStatus = statusFilter === "all" || issue.status === statusFilter;
-    
-    // Apply area filter if we had area property in our data
-    // For now just simulate it
-    const matchesArea = selectedArea === "all" || Math.random() > 0.3; // Random filtering for demo
-    
+    const locationText = typeof issue.location === "string" ? issue.location : issue.location.address;
+    const matchesArea = selectedArea === "all" || locationText.toLowerCase().includes(selectedArea);
     return matchesSearch && matchesStatus && matchesArea;
   });
 
@@ -78,7 +82,7 @@ const Admin = () => {
             <TabsContent value="reports" className="space-y-4 pt-4">
               <TabContent 
                 title="Issue Reports" 
-                description="Manage and update reported civic issues."
+                description="Review citizen reports, community confirmations and official status updates."
               >
                 <IssueFilters 
                   searchTerm={searchTerm}
@@ -88,7 +92,7 @@ const Admin = () => {
                   onStatusFilterChange={setStatusFilter}
                   onAreaFilterChange={setSelectedArea}
                 />
-                <IssueTable issues={filteredIssues} />
+                {loading ? <div className="py-10 text-center text-muted-foreground">Loading live reports…</div> : <IssueTable issues={filteredIssues} onIssueUpdated={fetchIssues} />}
               </TabContent>
             </TabsContent>
             
