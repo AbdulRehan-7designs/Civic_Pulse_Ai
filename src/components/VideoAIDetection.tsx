@@ -65,10 +65,11 @@ const VideoAIDetection = ({ onDetectionResults }: VideoAIDetectionProps) => {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error accessing camera:", err);
+      const errorName = err instanceof Error ? err.name : undefined;
       // Only show error if it's not a permission denial (user might have intentionally denied)
-      if (err.name !== 'NotAllowedError') {
+      if (errorName !== 'NotAllowedError') {
         toast({
           title: "Camera Error",
           description: "Unable to access camera. Please check permissions.",
