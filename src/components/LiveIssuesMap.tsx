@@ -36,7 +36,7 @@ const LiveIssuesMap = ({ issues, onIssueSelect, height = '600px' }: LiveIssuesMa
   });
 
   // Get status color
-  const getStatusColor = (status: string): string => {
+  const getStatusColor = useCallback((status: string): string => {
     switch (status) {
       case 'reported': return '#fbbf24'; // yellow
       case 'verified': return '#3b82f6'; // blue
@@ -44,10 +44,10 @@ const LiveIssuesMap = ({ issues, onIssueSelect, height = '600px' }: LiveIssuesMa
       case 'resolved': return '#10b981'; // green
       default: return '#6b7280'; // gray
     }
-  };
+  }, []);
 
   // Get status icon URL
-  const getStatusIcon = (status: string): string => {
+  const getStatusIcon = useCallback((status: string): string => {
     const color = getStatusColor(status).replace('#', '');
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
       <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
@@ -55,7 +55,7 @@ const LiveIssuesMap = ({ issues, onIssueSelect, height = '600px' }: LiveIssuesMa
         <circle cx="16" cy="16" r="6" fill="white"/>
       </svg>
     `)}`;
-  };
+  }, [getStatusColor]);
 
   const createMarker = useCallback((issue: IssueReport, position: { lat: number; lng: number }) => {
     if (!googleMapRef.current) return;
@@ -106,7 +106,7 @@ const LiveIssuesMap = ({ issues, onIssueSelect, height = '600px' }: LiveIssuesMa
 
     markersRef.current.push(marker);
     infoWindowsRef.current.push(infoWindow);
-  }, [onIssueSelect]);
+  }, [onIssueSelect, getStatusIcon]);
 
   // Initialize map
   useEffect(() => {
