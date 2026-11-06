@@ -1,0 +1,2 @@
+-- Superseded by 20261106000000_civic_pulse_core_schema.sql.
+-- Kept as a no-op so fresh environments do not replay the incomplete legacy setup.
