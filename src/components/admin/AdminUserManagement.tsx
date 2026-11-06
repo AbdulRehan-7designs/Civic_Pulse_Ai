@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { Shield, Plus, Trash2, Mail, User, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +42,6 @@ const AdminUserManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  const { toast } = useToast();
 
   // Form state
   const [formData, setFormData] = useState({
