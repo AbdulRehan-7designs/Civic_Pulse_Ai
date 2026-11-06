@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Loader2, Filter, MapPin } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { IssueReport } from '@/utils/mockData';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -29,7 +29,6 @@ const HotspotMap = ({ issues, height = '500px' }: HotspotMapProps) => {
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'heatmap' | 'markers'>('heatmap');
-  const { toast } = useToast();
 
   // Get unique categories
   const categories = ['all', ...new Set(issues.map(issue => issue.category))];
