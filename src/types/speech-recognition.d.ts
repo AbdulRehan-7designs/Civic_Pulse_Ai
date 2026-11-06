@@ -66,23 +66,13 @@ interface SpeechGrammar {
 }
 
 interface Window {
-  SpeechRecognition: {
+  SpeechRecognition?: {
     new (): SpeechRecognition;
   };
-  webkitSpeechRecognition: {
+  webkitSpeechRecognition?: {
     new (): SpeechRecognition;
   };
 }
-
-declare var SpeechRecognition: {
-  prototype: SpeechRecognition;
-  new (): SpeechRecognition;
-};
-
-declare var webkitSpeechRecognition: {
-  prototype: SpeechRecognition;
-  new (): SpeechRecognition;
-};
 
 
 
