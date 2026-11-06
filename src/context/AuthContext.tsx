@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   // Fetch user profile
-  const fetchProfile = useCallback(async (userId: string) => {
+  const fetchProfile = async (userId: string) => {
     try {
       // First, try to get profile from profiles table
       let profileData = null;
@@ -115,7 +115,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         issues_voted: 0,
       };
     }
-  }, [user]);
+  };
 
   // Initialize auth state
   useEffect(() => {
@@ -191,7 +191,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchProfile, navigate]);
+  }, []);
 
   const login = async (email: string, password: string) => {
     try {
