@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "14.18"
   }
   public: {
     Tables: {
@@ -118,6 +118,13 @@ export type Database = {
             referencedRelation: "issues"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       issue_trends: {
@@ -126,7 +133,7 @@ export type Database = {
           avg_resolution_time: number | null
           category: string | null
           created_at: string
-          hotspot_coordinates: unknown[] | null
+          hotspot_coordinates: Json | null
           id: string
           issue_count: number
           trend_data: Json | null
@@ -137,7 +144,7 @@ export type Database = {
           avg_resolution_time?: number | null
           category?: string | null
           created_at?: string
-          hotspot_coordinates?: unknown[] | null
+          hotspot_coordinates?: Json | null
           id?: string
           issue_count?: number
           trend_data?: Json | null
@@ -148,7 +155,7 @@ export type Database = {
           avg_resolution_time?: number | null
           category?: string | null
           created_at?: string
-          hotspot_coordinates?: unknown[] | null
+          hotspot_coordinates?: Json | null
           id?: string
           issue_count?: number
           trend_data?: Json | null
@@ -192,6 +199,20 @@ export type Database = {
             referencedRelation: "issues"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "issue_updates_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "issue_updates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       issues: {
@@ -200,7 +221,7 @@ export type Database = {
           blockchain_hash: string | null
           category: string
           coordinates: unknown
-          created_at: string | null
+          created_at: string
           description: string
           id: string
           image_url: string | null
@@ -220,7 +241,7 @@ export type Database = {
           blockchain_hash?: string | null
           category: string
           coordinates: unknown
-          created_at?: string | null
+          created_at?: string
           description: string
           id?: string
           image_url?: string | null
@@ -240,7 +261,7 @@ export type Database = {
           blockchain_hash?: string | null
           category?: string
           coordinates?: unknown
-          created_at?: string | null
+          created_at?: string
           description?: string
           id?: string
           image_url?: string | null
@@ -275,54 +296,57 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
-          created_at: string | null
+          created_at: string
           full_name: string
           id: string
-          is_admin: boolean | null
-          issues_reported: number | null
-          issues_voted: number | null
-          updated_at: string | null
+          is_admin: boolean
+          is_official: boolean
+          issues_reported: number
+          issues_voted: number
+          updated_at: string
           username: string
         }
         Insert: {
           avatar_url?: string | null
-          created_at?: string | null
+          created_at?: string
           full_name: string
           id: string
-          is_admin?: boolean | null
-          issues_reported?: number | null
-          issues_voted?: number | null
-          updated_at?: string | null
+          is_admin?: boolean
+          is_official?: boolean
+          issues_reported?: number
+          issues_voted?: number
+          updated_at?: string
           username: string
         }
         Update: {
           avatar_url?: string | null
-          created_at?: string | null
+          created_at?: string
           full_name?: string
           id?: string
-          is_admin?: boolean | null
-          issues_reported?: number | null
-          issues_voted?: number | null
-          updated_at?: string | null
+          is_admin?: boolean
+          is_official?: boolean
+          issues_reported?: number
+          issues_voted?: number
+          updated_at?: string
           username?: string
         }
         Relationships: []
       }
       votes: {
         Row: {
-          created_at: string | null
+          created_at: string
           id: string
           issue_id: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           issue_id: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           issue_id?: string
           user_id?: string
@@ -349,19 +373,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      increment_votes: {
-        Args: { issue_id: string }
+      set_user_role: {
+        Args: {
+          make_admin: boolean
+          make_official: boolean
+          target_user_id: string
+        }
         Returns: undefined
       }
     }
     Enums: {
-      issue_status:
-        | "new"
-        | "unverified"
-        | "verified"
-        | "in_progress"
-        | "resolved"
-        | "fake"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -377,12 +399,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -406,11 +428,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -431,11 +453,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -456,11 +478,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -473,11 +495,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -488,15 +510,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      issue_status: [
-        "new",
-        "unverified",
-        "verified",
-        "in_progress",
-        "resolved",
-        "fake",
-      ],
-    },
+    Enums: {},
   },
 } as const
