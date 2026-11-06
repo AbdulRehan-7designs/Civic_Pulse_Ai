@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAIAnalysis } from '@/hooks/useAIAnalysis';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,7 @@ export const IssueAIInsights = ({ issue }: IssueAIInsightsProps) => {
     }
   };
 
-  const fetchSimilarIssues = async (issueIds: string[]) => {
+  const fetchSimilarIssues = useCallback(async (issueIds: string[]) => {
     if (!issueIds || issueIds.length === 0) return;
     
     setLoadingSimilar(true);
@@ -60,7 +60,7 @@ export const IssueAIInsights = ({ issue }: IssueAIInsightsProps) => {
     } finally {
       setLoadingSimilar(false);
     }
-  };
+  }, []);
 
   // Load existing analysis if available
   useEffect(() => {
@@ -72,7 +72,7 @@ export const IssueAIInsights = ({ issue }: IssueAIInsightsProps) => {
     };
     
     loadAnalysis();
-  }, [issue.id]); // Added dependency
+  }, [issue.id, fetchAnalysis, fetchSimilarIssues]);
 
   if (!analysis && !isAnalyzing) {
     return (
