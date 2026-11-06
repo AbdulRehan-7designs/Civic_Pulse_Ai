@@ -62,7 +62,7 @@ const Reports = () => {
       </div>
       {showMap && <div className="mb-6"><LiveIssuesMap issues={reports} onIssueSelect={viewDetails} height="600px"/></div>}
       {loading ? <div className="text-center py-20 text-gray-500">Loading live community reports…</div> :
-        processed.length === 0 ? <div className="text-center py-20"><p className="text-gray-500 mb-4">No reports found.</p><Link to="/report"><Button>Create a Report</Button></Link></div> :
+        processed.length === 0 ? <div className="text-center py-20"><p className="text-gray-500 mb-4">No reports found.</p><Link to="/"><Button>Create a Report</Button></Link></div> :
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {processed.map(report => <Card key={report.id} className="overflow-hidden hover:shadow-lg transition-all">
             <div className="aspect-video relative"><img src={report.images?.[0] || "/placeholder.svg"} alt={report.title} className="object-cover w-full h-full"/>
