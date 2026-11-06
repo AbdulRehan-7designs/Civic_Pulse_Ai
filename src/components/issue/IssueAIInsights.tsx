@@ -9,7 +9,7 @@ import { Loader2, Sparkles, AlertTriangle, CheckCircle2,
 import { Progress } from "@/components/ui/progress";
 import { IssueReport } from "@/utils/mockData";
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 
 interface IssueAIInsightsProps {
   issue: IssueReport;
@@ -19,7 +19,6 @@ export const IssueAIInsights = ({ issue }: IssueAIInsightsProps) => {
   const { analyzeIssue, fetchAnalysis, analysis, isAnalyzing } = useAIAnalysis();
   const [similarIssues, setSimilarIssues] = useState<IssueReport[]>([]);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
-  const { toast } = useToast();
 
   const handleAnalyze = async () => {
     const result = await analyzeIssue(issue.id);
