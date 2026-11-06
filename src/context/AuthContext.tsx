@@ -25,7 +25,7 @@ type AuthContextType = {
   profile: UserProfile | null;
   session: Session | null;
   login: (email: string, password: string) => Promise<{ error?: unknown }>;
-  signUp: (email: string, password: string, userData: { username: string; full_name: string; role: UserRole }) => Promise<{ error?: any }>;
+  signUp: (email: string, password: string, userData: { username: string; full_name: string; role: UserRole }) => Promise<{ error?: unknown }>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   loading: boolean;
@@ -286,7 +286,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       return { error: null };
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Registration Failed",
         description: "An unexpected error occurred.",
