@@ -35,7 +35,7 @@ const generateMockData = () => {
   
   // For regional data
   const regionalData = districts.map(name => {
-    const obj: Record<string, any> = { name };
+    const obj: Record<string, string | number> = { name };
     categories.forEach(cat => {
       obj[cat] = Math.floor(Math.random() * 50) + 5;
     });
