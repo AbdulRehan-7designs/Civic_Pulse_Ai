@@ -24,9 +24,9 @@ export interface AIAnalysis {
     estimatedHours: number;
     equipmentNeeded: string[];
   };
-  detected_patterns?: Record<string, any>;
-  seasonal_factors?: Record<string, any>;
-  trend_indicators?: Record<string, any>;
+  detected_patterns?: Record<string, unknown>;
+  seasonal_factors?: Record<string, unknown>;
+  trend_indicators?: Record<string, unknown>;
 }
 
 export function useAIAnalysis() {
