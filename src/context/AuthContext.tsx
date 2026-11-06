@@ -47,7 +47,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       // First, try to get profile from profiles table
       let profileData = null;
-      let profileError = null;
       
       try {
         const { data, error } = await supabase
@@ -57,145 +56,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .maybeSingle(); // Use maybeSingle to avoid errors if profile doesn't exist
         
         profileData = data;
-        profileError = error;
         
         // Only treat as error if it's not a "not found" error
         if (error && error.code !== 'PGRST116' && error.code !== 'PGRST205') {
           console.warn('Error fetching profile:', error.message);
         }
       } catch (err: any) {
-        profileError = err;
         // Don't log if it's just a table not found error
         if (err.code !== 'PGRST205' && err.code !== 'PGRST116') {
           console.warn('Exception fetching profile:', err.message);
         }
       }
 
-      // Also check users table for role (if it exists)
-      // Skip if there are RLS policy issues (infinite recursion errors)
-      let userRoleData = null;
-      let skipUsersTable = false;
-      
-      try {
-        // First try by ID
-        let { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('id, role, full_name, email')
-          .eq('id', userId)
-          .maybeSingle(); // Use maybeSingle instead of single to avoid errors if not found
-        
-        // Check for infinite recursion or policy errors
-        if (userError && (
-          userError.message?.includes('infinite recursion') ||
-          userError.message?.includes('policy') ||
-          userError.code === 'PGRST301' ||
-          userError.status === 500
-        )) {
-          console.warn('Skipping users table query due to RLS policy issue:', userError.message);
-          skipUsersTable = true;
-        }
-        // If not found by ID and no policy error, try by email
-        else if ((userError || !userData) && user?.email && !skipUsersTable) {
-          const { data: emailData, error: emailError } = await supabase
-            .from('users')
-            .select('id, role, full_name, email')
-            .eq('email', user.email)
-            .maybeSingle();
-          
-          if (!emailError && emailData) {
-            userData = emailData;
-            userError = null;
-          } else if (emailError && (
-            emailError.message?.includes('infinite recursion') ||
-            emailError.message?.includes('policy') ||
-            emailError.code === 'PGRST301'
-          )) {
-            skipUsersTable = true;
-          }
-        }
-        
-        // Only set userRoleData if we have valid data and no critical errors
-        if (!userError && userData && !skipUsersTable) {
-          userRoleData = userData;
-        }
-      } catch (err: any) {
-        // Skip users table if there are policy issues
-        if (err.message?.includes('infinite recursion') || err.message?.includes('policy')) {
-          skipUsersTable = true;
-          console.warn('Skipping users table due to policy error');
-        }
-      }
-
-      // Determine role - prioritize user metadata (most reliable), then users table, then profile
+      // Authorization roles come only from the trusted profiles table.
+      // Never trust user-editable user_metadata or a client-controlled users table.
       let role: UserRole = 'citizen';
       let isAdmin = false;
       let isOfficial = false;
-      let fullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
-      let username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'user';
+      let fullName = profileData?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+      let username = profileData?.username || user?.user_metadata?.username || user?.email?.split('@')[0] || 'user';
 
-      // Check user metadata FIRST (most reliable, no database queries needed)
-      if (user?.user_metadata?.role) {
-        const metadataRole = user.user_metadata.role as UserRole;
-        role = metadataRole;
-        isAdmin = role === 'admin';
-        isOfficial = role === 'official';
-        if (user.user_metadata.full_name) fullName = user.user_metadata.full_name;
-        if (user.user_metadata.username) username = user.user_metadata.username;
-      }
-      // Then check users table (if no policy issues)
-      else if (userRoleData?.role && !skipUsersTable) {
-        role = userRoleData.role as UserRole;
-        isAdmin = role === 'admin';
-        isOfficial = role === 'official';
-        if (userRoleData.full_name) fullName = userRoleData.full_name;
-      }
-      // Then check profile data
-      else if (profileData) {
-        if (profileData.is_admin) {
-          role = 'admin';
-          isAdmin = true;
-        } else if (profileData.is_official !== undefined && profileData.is_official) {
-          role = 'official';
-          isOfficial = true;
-        } else if (profileData.role) {
-          role = profileData.role as UserRole;
-          isAdmin = role === 'admin';
-          isOfficial = role === 'official';
-        }
-        if (profileData.full_name) fullName = profileData.full_name;
-        if (profileData.username) username = profileData.username;
-      }
-
-      // If we found user role data but no profile, try to create/update profile
-      if (userRoleData && !profileData) {
-        // Try to create or update profile based on role
-        try {
-          const isAdmin = userRoleData.role === 'admin';
-          const isOfficial = userRoleData.role === 'official';
-          
-          await supabase
-            .from('profiles')
-            .upsert({
-              id: userId,
-              username: username,
-              full_name: fullName,
-              is_admin: isAdmin,
-              is_official: isOfficial,
-            }, {
-              onConflict: 'id'
-            });
-        } catch (err: any) {
-          // Ignore errors - profile creation is optional
-          // Only log if it's not a table not found error
-          if (err.code !== 'PGRST205') {
-            console.warn('Could not create/update profile:', err.message);
-          }
-        }
+      if (profileData?.is_admin === true) {
+        role = 'admin';
+        isAdmin = true;
+      } else if (profileData?.is_official === true) {
+        role = 'official';
+        isOfficial = true;
       }
 
       return {
         id: userId,
-        email: user?.email || userRoleData?.email || '',
+        email: user?.email || '',
         username: username,
         full_name: fullName,
         avatar_url: profileData?.avatar_url || null,
@@ -205,10 +96,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         issues_reported: profileData?.issues_reported || 0,
         issues_voted: profileData?.issues_voted || 0,
       };
-    } catch (error: any) {
+    } catch {
       // Silently handle all errors and return default profile
       // Don't log errors to console to prevent spam
-      const role = (user?.user_metadata?.role as UserRole) || 'citizen';
+      const role: UserRole = 'citizen';
       return {
         id: userId,
         email: user?.email || '',
@@ -216,8 +107,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         full_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User',
         avatar_url: null,
         role: role,
-        is_admin: role === 'admin',
-        is_official: role === 'official',
+        is_admin: false,
+        is_official: false,
         issues_reported: 0,
         issues_voted: 0,
       };
@@ -254,17 +145,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               }
             } catch (error) {
               console.error('Error fetching profile after auth change:', error);
-              // Even on error, try to determine role from metadata
-              const metadataRole = session.user.user_metadata?.role;
-              if (event === 'SIGNED_IN' && metadataRole) {
-                setTimeout(() => {
-                  if (metadataRole === 'admin') {
-                    navigate('/admin', { replace: true });
-                  } else if (metadataRole === 'official') {
-                    navigate('/official', { replace: true });
-                  }
-                }, 200);
-              }
             } finally {
               setLoading(false);
             }
@@ -370,10 +250,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       setLoading(true);
       const redirectUrl = `${window.location.origin}/`;
-      
-      // Determine role flags for backward compatibility
-      const is_admin = userData.role === 'admin';
-      const is_official = userData.role === 'official';
+      // Every self-service signup is a citizen account. Staff roles are assigned
+      // later by an existing administrator through the protected role RPC.
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -383,9 +261,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           data: {
             username: userData.username,
             full_name: userData.full_name,
-            role: userData.role,
-            is_admin: is_admin,
-            is_official: is_official,
           }
         }
       });
@@ -400,25 +275,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       if (data.user) {
-        // Create profile in database with role
-        try {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert({
-              id: data.user.id,
-              username: userData.username,
-              full_name: userData.full_name,
-              is_admin: is_admin,
-              is_official: is_official,
-            });
-
-          if (profileError && profileError.code !== 'PGRST205') {
-            console.error('Error creating profile:', profileError);
-          }
-        } catch (profileErr) {
-          // Profile creation is optional if table doesn't exist
-          console.log('Profile creation skipped:', profileErr);
-        }
 
         toast({
           title: "Registration Successful",

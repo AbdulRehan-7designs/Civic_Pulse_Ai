@@ -136,7 +136,7 @@ npm run build     # Create production build
 npm run preview   # Preview the production build locally
 ```
 
-## Before presenting this as a live product
+## Production Readiness & Future Improvements
 
 - Connect the reporting form to the Supabase-backed `createIssue` path.
 - Replace mock report feeds and admin data with database queries.

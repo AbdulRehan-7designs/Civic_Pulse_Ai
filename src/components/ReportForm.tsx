@@ -12,19 +12,14 @@ import AIClassifier from './AIClassifier';
 import MultiMediaUploader from './MultiMediaUploader';
 import AreaSelector from './AreaSelector';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { supabase } from '@/integrations/supabase/client';
 import { Badge } from './ui/badge';
 import { Card } from './ui/card';
 import { Progress } from './ui/progress';
 import GoogleMapSelector from './GoogleMapSelector';
 import VideoAIDetection, { DetectionResult } from './VideoAIDetection';
 import SpeechToForm from './SpeechToForm';
-
-interface MediaFile {
-  type: 'image' | 'audio' | 'video';
-  url: string;
-  file: File;
-}
+import { useIssues } from '@/hooks/useIssues';
+import type { UploadedMedia } from './MultiMediaUploader';
 
 interface ReportFormProps {
   onSubmitSuccess?: () => void;
@@ -51,7 +46,7 @@ const ReportForm = ({ onSubmitSuccess }: ReportFormProps) => {
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
   const [area, setArea] = useState('');
-  const [media, setMedia] = useState<MediaFile | null>(null);
+  const [media, setMedia] = useState<UploadedMedia | null>(null);
   const [aiTags, setAiTags] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAiProcessing, setIsAiProcessing] = useState(false);
@@ -62,6 +57,7 @@ const ReportForm = ({ onSubmitSuccess }: ReportFormProps) => {
   const [showMap, setShowMap] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const { toast } = useToast();
+  const { createIssue } = useIssues({ autoFetch: false });
 
   // Request relevant permissions when the form loads
   useEffect(() => {
@@ -82,75 +78,37 @@ const ReportForm = ({ onSubmitSuccess }: ReportFormProps) => {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    
-    if (!title || !category || !description || (!address && !location)) {
-      toast({
-        title: "Missing information",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      });
+    if (!title.trim() || !category || !description.trim() || (!address.trim() && !location)) {
+      toast({ title: "Missing information", description: "Please complete the title, category, description, and location.", variant: "destructive" });
       return;
     }
-    
     setIsSubmitting(true);
-    
-    // In a real app, this would call an API to submit the report
-    // Simulate a submission process with steps
-    toast({
-      title: "Processing report...",
-      description: "Collecting data and preparing submission",
-    });
-    
-    setTimeout(() => {
-      toast({
-        title: "Media upload complete",
-        description: media ? `${media.type} processed successfully` : "No media attached",
+    try {
+      const resolvedLocation = address.trim() || location?.address ||
+        (location ? `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}` : "");
+      const { error } = await createIssue({
+        title: title.trim(), description: description.trim(), category,
+        location: resolvedLocation, area: area.trim(),
+        coordinates: location ? [location.lng, location.lat] : null,
+        image_url: media?.type === "image" ? media.url : undefined,
+        media_url: media && media.type !== "image" ? media.url : undefined,
+        severity: aiRecommendation?.priority ?? 3,
       });
-      
-      setTimeout(() => {
-        toast({
-          title: "Location verified",
-          description: location 
-            ? `Location at ${location.address || `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`}`
-            : `${area.charAt(0).toUpperCase() + area.slice(1)} area confirmed`,
-        });
-        
-        setTimeout(() => {
-          toast({
-            title: "Report submitted!",
-            description: `Your civic issue has been reported successfully on ${currentDate.toLocaleDateString()}.`,
-          });
-          
-          // Reset form
-          setTitle('');
-          setCategory('');
-          setDescription('');
-          setAddress('');
-          setArea('');
-          setMedia(null);
-          setAiTags([]);
-          setAiRecommendation(null);
-          setIsSubmitting(false);
-          setVideoDetectionResults([]);
-          setLocation(null);
-          
-          if (onSubmitSuccess) {
-            onSubmitSuccess();
-          }
-          
-          // Show a mock notification
-          if ("Notification" in window && Notification.permission === "granted") {
-            // In a real app, this would come through a service worker
-            setTimeout(() => {
-              new Notification("CivicPulse Report Update", {
-                body: "Your report has been received and will be reviewed shortly.",
-                icon: "/favicon.ico",
-              });
-            }, 3000);
-          }
-        }, 1000);
-      }, 1000);
-    }, 1000);
+      if (error) return;
+      toast({ title: "Report submitted", description: "Your report has been saved to Civic Pulse." });
+      setTitle(""); setCategory(""); setDescription(""); setAddress(""); setArea("");
+      setMedia(null); setAiTags([]); setAiRecommendation(null);
+      setVideoDetectionResults([]); setLocation(null); setCurrentDate(new Date());
+      onSubmitSuccess?.();
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("CivicPulse Report Received", { body: "Your report has been received and will be reviewed.", icon: "/favicon.ico" });
+      }
+    } catch (error) {
+      console.error("Report submission failed:", error);
+      toast({ title: "Submission failed", description: error instanceof Error ? error.message : "Could not save your report.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleAIClassify = (tags: string[]) => {
