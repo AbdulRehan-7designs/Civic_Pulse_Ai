@@ -106,7 +106,7 @@ const LiveIssuesMap = ({ issues, onIssueSelect, height = '600px' }: LiveIssuesMa
 
     markersRef.current.push(marker);
     infoWindowsRef.current.push(infoWindow);
-  }, [onIssueSelect, getStatusIcon]);
+  }, [onIssueSelect, getStatusIcon, getStatusColor]);
 
   // Initialize map
   useEffect(() => {
