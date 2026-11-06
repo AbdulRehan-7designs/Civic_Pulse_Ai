@@ -100,8 +100,8 @@ const SetupAdmin = () => {
         });
         signUpData = result.data;
         signUpError = result.error;
-      } catch (err: any) {
-        signUpError = err;
+      } catch (err: unknown) {
+        signUpError = err instanceof Error ? err : new Error(String(err));
       }
 
       if (signUpError) {
@@ -189,9 +189,9 @@ const SetupAdmin = () => {
       } else {
         throw new Error('User account was not created. Please try again.');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating admin:', error);
-      const errorMessage = error.message || error.toString() || "Failed to create admin account. Please check your connection and try again.";
+      const errorMessage = error instanceof Error ? error.message : String(error);
       toast({
         title: "Setup Failed",
         description: errorMessage,
