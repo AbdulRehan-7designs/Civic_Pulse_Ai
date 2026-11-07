@@ -25,17 +25,20 @@ import {
   Calendar
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 import HotspotMap from '@/components/HotspotMap';
 import { mockIssues } from '@/utils/mockData';
 
+type PriorityChartDatum = { name: string; value: number; color: string };
+type CategoryChartDatum = { name: string; value: number };
+type DepartmentChartDatum = { name: string; count: number };
+
 export const AIInsightsDashboard = () => {
   const [loading, setLoading] = useState(true);
-  const [priorityData, setPriorityData] = useState<any[]>([]);
-  const [categoryData, setCategoryData] = useState<any[]>([]);
-  const [departmentData, setDepartmentData] = useState<any[]>([]);
+  const [priorityData, setPriorityData] = useState<PriorityChartDatum[]>([]);
+  const [categoryData, setCategoryData] = useState<CategoryChartDatum[]>([]);
+  const [departmentData, setDepartmentData] = useState<DepartmentChartDatum[]>([]);
   const [trendPeriod, setTrendPeriod] = useState('weekly');
-  const { toast } = useToast();
   
   useEffect(() => {
     async function fetchInsights() {

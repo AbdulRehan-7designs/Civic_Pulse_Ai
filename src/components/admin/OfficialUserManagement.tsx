@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { Building2, Plus, Trash2, Edit, Mail, User, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +42,6 @@ const OfficialUserManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  const { toast } = useToast();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -55,7 +54,7 @@ const OfficialUserManagement = () => {
   });
 
   // Fetch official users
-  const fetchOfficials = async () => {
+  const fetchOfficials = useCallback(async () => {
     setIsLoading(true);
     try {
       // Fetch from profiles table where is_official is true
@@ -75,7 +74,7 @@ const OfficialUserManagement = () => {
         // Check if is_official column exists by checking first item
         const hasIsOfficialColumn = 'is_official' in (data[0] || {});
         if (hasIsOfficialColumn) {
-          officialData = data.filter((profile: any) => profile.is_official === true);
+          officialData = data.filter((profile) => profile.is_official === true);
         } else {
           // Fallback: if column doesn't exist, return empty array
           // In production, you'd want to run the migration first
@@ -85,10 +84,10 @@ const OfficialUserManagement = () => {
 
       if (officialData && officialData.length > 0) {
         // Map profiles to official users
-        const officialUsers: OfficialUser[] = officialData.map((profile: any) => {
+        const officialUsers: OfficialUser[] = officialData.map((profile) => {
           return {
             id: profile.id,
-            email: profile.email || `${profile.username}@example.com`,
+            email: ('email' in profile && typeof profile.email === 'string' && profile.email) || `${profile.username}@example.com`,
             username: profile.username,
             full_name: profile.full_name,
             created_at: profile.created_at || new Date().toISOString(),
@@ -100,21 +99,21 @@ const OfficialUserManagement = () => {
       } else {
         setOfficials([]);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching officials:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch official users. " + (error.message || ''),
+        description: "Failed to fetch official users. " + (error instanceof Error ? error.message : String(error)),
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchOfficials();
-  }, []);
+  }, [fetchOfficials]);
 
   // Create official user
   const createOfficialUser = async () => {
@@ -234,11 +233,11 @@ const OfficialUserManagement = () => {
       });
       setIsDialogOpen(false);
       fetchOfficials(); // Refresh list
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating official user:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create official user.",
+        description: error instanceof Error ? error.message : "Failed to create official user.",
         variant: "destructive",
       });
     } finally {
@@ -288,7 +287,7 @@ const OfficialUserManagement = () => {
       });
 
       fetchOfficials(); // Refresh list
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error removing official:', error);
       toast({
         title: "Error",

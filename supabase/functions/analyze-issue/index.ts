@@ -1,250 +1,151 @@
-
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.4.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const json = (body: Record<string, unknown>, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
-    // Create a Supabase client with the Auth context of the logged in user
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-    );
+    const authorization = req.headers.get("Authorization");
+    if (!authorization) return json({ error: "Authentication required" }, 401);
 
-    // Parse request body
-    const { issueId } = await req.json();
-    
-    if (!issueId) {
-      return new Response(
-        JSON.stringify({ error: 'Issue ID is required' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !anonKey || !serviceKey) {
+      console.error("Supabase function environment is incomplete");
+      return json({ error: "Server configuration error" }, 500);
     }
 
-    // Fetch issue details
-    const { data: issueData, error: issueError } = await supabaseClient
-      .from('issues')
-      .select('*')
-      .eq('id', issueId)
-      .single();
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authorization } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: authData, error: authError } = await userClient.auth.getUser();
+    if (authError || !authData.user) return json({ error: "Invalid or expired session" }, 401);
 
-    if (issueError) {
-      console.error('Error fetching issue:', issueError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch issue details' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+    const body = await req.json();
+    const issueId = body?.issueId;
+    if (typeof issueId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(issueId)) {
+      return json({ error: "A valid issue ID is required" }, 400);
     }
 
-    // Fetch similar issues
-    const { data: similarIssues, error: similarError } = await supabaseClient
-      .from('issues')
-      .select('id, title, description, category')
-      .eq('category', issueData.category)
-      .neq('id', issueId)
+    // Use service privileges only after authenticating and authorizing the caller.
+    const serviceClient = createClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const [{ data: issue, error: issueError }, { data: profile, error: profileError }] = await Promise.all([
+      serviceClient.from("issues").select("id, user_id, title, description, category, location, severity").eq("id", issueId).maybeSingle(),
+      serviceClient.from("profiles").select("is_admin, is_official").eq("id", authData.user.id).maybeSingle(),
+    ]);
+
+    if (issueError || profileError) {
+      console.error("Authorization lookup failed", issueError ?? profileError);
+      return json({ error: "Could not verify access to this report" }, 500);
+    }
+    if (!issue) return json({ error: "Report not found" }, 404);
+    const isStaff = profile?.is_admin === true || profile?.is_official === true;
+    if (issue.user_id !== authData.user.id && !isStaff) {
+      return json({ error: "You are not allowed to analyze this report" }, 403);
+    }
+
+    const { data: similarIssues, error: similarError } = await serviceClient
+      .from("issues")
+      .select("id, title, description, category")
+      .eq("category", issue.category)
+      .neq("id", issueId)
       .limit(3);
+    if (similarError) console.warn("Similar report lookup failed", similarError.message);
 
-    // Generate simulated AI analysis
     const analysis = {
       issue_id: issueId,
-      predicted_category: issueData.category,
-      category_confidence: 0.85 + (Math.random() * 0.15),
-      alternative_categories: generateAlternativeCategories(issueData.category),
-      extracted_keywords: extractKeywords(issueData.description),
-      similar_issue_ids: similarIssues?.map(issue => issue.id) || [],
-      similarity_scores: generateSimilarityScores(similarIssues),
-      duplicate_score: 0.15 + (Math.random() * 0.25),
-      priority_score: calculatePriorityScore(issueData),
-      impact_assessment: generateImpactAssessment(issueData),
-      urgency_level: determineUrgencyLevel(issueData),
-      assigned_departments: assignDepartments(issueData.category),
-      estimated_response_time: estimateResponseTime(issueData),
-      resource_requirements: calculateResourceRequirements(issueData),
+      predicted_category: issue.category,
+      category_confidence: 0.85 + Math.random() * 0.15,
+      alternative_categories: generateAlternativeCategories(issue.category),
+      extracted_keywords: extractKeywords(issue.description),
+      similar_issue_ids: similarIssues?.map((item) => item.id) ?? [],
+      similarity_scores: generateSimilarityScores(similarIssues ?? []),
+      duplicate_score: 0.15 + Math.random() * 0.25,
+      priority_score: Math.min(10, Math.max(1, issue.severity * 2)),
+      impact_assessment: "Automated preliminary assessment; staff review is required.",
+      urgency_level: issue.severity >= 5 ? "Critical" : issue.severity >= 4 ? "High" : issue.severity >= 3 ? "Medium" : "Low",
+      assigned_departments: assignDepartments(issue.category),
+      estimated_response_time: estimateResponseTime(issue.severity),
+      resource_requirements: calculateResourceRequirements(),
       detected_patterns: {},
       seasonal_factors: {},
-      trend_indicators: {}
+      trend_indicators: {},
     };
 
-    // Store the analysis in the database
-    const { data: savedAnalysis, error: saveError } = await supabaseClient
-      .from('ai_analyses')
+    const { data: savedAnalysis, error: saveError } = await serviceClient
+      .from("ai_analyses")
       .insert(analysis)
       .select()
       .single();
 
     if (saveError) {
-      console.error('Error saving analysis:', saveError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to save analysis' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      console.error("Could not persist analysis", saveError);
+      return json({ error: "Failed to save analysis" }, 500);
     }
-
-    // Return the analysis
-    return new Response(
-      JSON.stringify({ analysis: savedAnalysis }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
-
+    return json({ analysis: savedAnalysis });
   } catch (error) {
-    console.error('Error in analyze-issue function:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
+    console.error("analyze-issue failed", error);
+    return json({ error: "Failed to analyze report" }, 500);
   }
 });
 
-// Helper functions for simulation
-function generateAlternativeCategories(mainCategory: string) {
-  const categories = [
-    'Road Damage', 'Water Leakage', 'Garbage & Waste', 
-    'Street Light Issue', 'Tree Hazard', 'Graffiti', 
-    'Park Maintenance', 'Sidewalk Damage'
-  ];
-  
+function generateAlternativeCategories(mainCategory: string): Record<string, number> {
+  const categories = ["Road Damage", "Water Leakage", "Garbage & Waste", "Street Light Issue", "Tree Hazard", "Graffiti", "Park Maintenance", "Sidewalk Damage"];
   const alternatives: Record<string, number> = {};
-  const filtered = categories.filter(cat => cat !== mainCategory);
-  
-  // Select 2-3 random alternative categories
+  const available = categories.filter((category) => category !== mainCategory);
   const count = 2 + Math.floor(Math.random() * 2);
-  for (let i = 0; i < count && i < filtered.length; i++) {
-    const randomIndex = Math.floor(Math.random() * filtered.length);
-    const cat = filtered[randomIndex];
-    alternatives[cat] = 0.2 + Math.random() * 0.4;
-    filtered.splice(randomIndex, 1);
+  for (let i = 0; i < count && available.length > 0; i++) {
+    const index = Math.floor(Math.random() * available.length);
+    alternatives[available.splice(index, 1)[0]] = 0.2 + Math.random() * 0.4;
   }
-  
   return alternatives;
 }
 
-function extractKeywords(text: string): string[] {
-  // In a real app, this would use NLP. For now, we'll simulate.
-  const commonKeywords = [
-    'pothole', 'water', 'leak', 'garbage', 'trash', 
-    'light', 'tree', 'damage', 'broken', 'hazard',
-    'graffiti', 'vandalism', 'dangerous', 'flooding',
-    'repair', 'urgent', 'intersection', 'road', 'sidewalk'
-  ];
-  
-  const keywords: string[] = [];
-  const count = 3 + Math.floor(Math.random() * 4);
-  
-  for (let i = 0; i < count; i++) {
-    const keyword = commonKeywords[Math.floor(Math.random() * commonKeywords.length)];
-    if (!keywords.includes(keyword)) {
-      keywords.push(keyword);
-    }
-  }
-  
-  return keywords;
+function extractKeywords(value: string): string[] {
+  const terms = ["pothole", "water", "leak", "garbage", "trash", "light", "tree", "damage", "broken", "hazard", "graffiti", "vandalism", "flooding", "repair", "urgent", "road", "sidewalk"];
+  const words = value.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  return [...new Set(words.filter((word) => terms.includes(word)))].slice(0, 8);
 }
 
-function generateSimilarityScores(similarIssues: any[] | null): Record<string, number> {
-  if (!similarIssues || similarIssues.length === 0) {
-    return {};
-  }
-  
-  const scores: Record<string, number> = {};
-  
-  for (const issue of similarIssues) {
-    scores[issue.id] = 0.4 + Math.random() * 0.5;
-  }
-  
-  return scores;
-}
-
-function calculatePriorityScore(issue: any): number {
-  // In a real app, this would use factors like severity, location, etc.
-  return Math.floor(Math.random() * 5) + 1;
-}
-
-function generateImpactAssessment(issue: any): string {
-  const impacts = [
-    "Low impact on daily activities. Can be addressed during routine maintenance.",
-    "Moderate impact affecting pedestrian safety. Requires attention within the standard timeline.",
-    "Significant impact on traffic flow and safety. Should be prioritized for swift resolution.",
-    "High impact affecting critical infrastructure. Immediate attention recommended.",
-    "Severe impact posing immediate danger to residents. Emergency response required."
-  ];
-  
-  return impacts[Math.floor(Math.random() * impacts.length)];
-}
-
-function determineUrgencyLevel(issue: any): string {
-  const levels = ["Low", "Medium", "High", "Critical"];
-  return levels[Math.floor(Math.random() * levels.length)];
+function generateSimilarityScores(items: Array<{ id: string }>): Record<string, number> {
+  return Object.fromEntries(items.map((item) => [item.id, 0.4 + Math.random() * 0.5]));
 }
 
 function assignDepartments(category: string): string[] {
-  const departmentMap: Record<string, string[]> = {
-    'Road Damage': ['Public Works', 'Transportation'],
-    'Water Leakage': ['Water Utility', 'Infrastructure'],
-    'Garbage & Waste': ['Sanitation', 'Environmental Services'],
-    'Street Light Issue': ['Electrical', 'Public Safety'],
-    'Tree Hazard': ['Parks & Recreation', 'Public Works'],
-    'Graffiti': ['Maintenance', 'Community Services'],
-    'Park Maintenance': ['Parks & Recreation', 'Public Works'],
-    'Sidewalk Damage': ['Public Works', 'Transportation']
+  const mapping: Record<string, string[]> = {
+    "Road Damage": ["Public Works", "Transportation"],
+    "Water Leakage": ["Water Utility", "Infrastructure"],
+    "Garbage & Waste": ["Sanitation", "Environmental Services"],
+    "Street Light Issue": ["Electrical", "Public Safety"],
+    "Tree Hazard": ["Parks & Recreation", "Public Works"],
+    "Graffiti": ["Maintenance", "Community Services"],
+    "Park Maintenance": ["Parks & Recreation", "Public Works"],
+    "Sidewalk Damage": ["Public Works", "Transportation"],
   };
-  
-  return departmentMap[category] || ['General Maintenance', 'Community Services'];
+  return mapping[category] ?? ["General Maintenance", "Community Services"];
 }
 
-function estimateResponseTime(issue: any): number {
-  // Return hours for response time
-  return 24 + Math.floor(Math.random() * 72);
+function estimateResponseTime(severity: number): number {
+  return Math.max(12, (6 - severity) * 24);
 }
 
-function calculateResourceRequirements(issue: any) {
-  const personnel = 1 + Math.floor(Math.random() * 5);
-  const hours = personnel * (4 + Math.floor(Math.random() * 8));
-  
-  const equipmentOptions = [
-    'Truck', 'Excavator', 'Concrete Mixer', 'Water Pump', 
-    'Generator', 'Light Tower', 'Chainsaw', 'Safety Barriers',
-    'Ladder', 'Pressure Washer', 'Handheld Tools'
-  ];
-  
-  const equipmentCount = 1 + Math.floor(Math.random() * 3);
-  const equipment = [];
-  
-  for (let i = 0; i < equipmentCount; i++) {
-    const item = equipmentOptions[Math.floor(Math.random() * equipmentOptions.length)];
-    if (!equipment.includes(item)) {
-      equipment.push(item);
-    }
-  }
-  
-  return {
-    personnel: personnel,
-    estimatedHours: hours,
-    equipmentNeeded: equipment
-  };
+function calculateResourceRequirements() {
+  return { personnel: 2, estimatedHours: 8, equipmentNeeded: ["Standard maintenance tools", "Safety equipment"] };
 }

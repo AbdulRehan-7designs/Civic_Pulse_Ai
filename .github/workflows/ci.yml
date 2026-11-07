@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - docs/phase-2-project-polish
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Audit dependency vulnerabilities
+        run: |
+          npm audit --json > npm-audit.json || true
+          node -e 'const report = JSON.parse(require("fs").readFileSync("npm-audit.json", "utf8")); console.log("Audit summary:", JSON.stringify(report.metadata?.vulnerabilities ?? {})); for (const [name, item] of Object.entries(report.vulnerabilities ?? {})) { const fixes = item.fixAvailable; console.log(name + " | " + item.severity + " | direct=" + item.isDirect + " | fix=" + JSON.stringify(fixes)); for (const via of item.via ?? []) { if (typeof via === "object") console.log("  advisory: " + via.title + " | range=" + via.range + " | url=" + via.url); } }'
+      - name: Type-check TypeScript
+        run: npx tsc -b --pretty false
+      - name: Run ESLint
+        run: npm run lint
+      - name: Build production bundle
+        run: npm run build

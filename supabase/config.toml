@@ -1,1 +1,7 @@
 project_id = "lheuewkksrzdpbdmvbea"
+
+[functions.analyze-issue]
+verify_jwt = true
+
+[functions.ai-analysis]
+verify_jwt = true

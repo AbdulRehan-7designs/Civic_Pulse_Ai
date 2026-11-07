@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAIAnalysis } from '@/hooks/useAIAnalysis';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { Loader2, Sparkles, AlertTriangle, CheckCircle2,
 import { Progress } from "@/components/ui/progress";
 import { IssueReport } from "@/utils/mockData";
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 
 interface IssueAIInsightsProps {
   issue: IssueReport;
@@ -19,7 +19,6 @@ export const IssueAIInsights = ({ issue }: IssueAIInsightsProps) => {
   const { analyzeIssue, fetchAnalysis, analysis, isAnalyzing } = useAIAnalysis();
   const [similarIssues, setSimilarIssues] = useState<IssueReport[]>([]);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
-  const { toast } = useToast();
 
   const handleAnalyze = async () => {
     const result = await analyzeIssue(issue.id);
@@ -29,7 +28,7 @@ export const IssueAIInsights = ({ issue }: IssueAIInsightsProps) => {
     }
   };
 
-  const fetchSimilarIssues = async (issueIds: string[]) => {
+  const fetchSimilarIssues = useCallback(async (issueIds: string[]) => {
     if (!issueIds || issueIds.length === 0) return;
     
     setLoadingSimilar(true);
@@ -61,7 +60,7 @@ export const IssueAIInsights = ({ issue }: IssueAIInsightsProps) => {
     } finally {
       setLoadingSimilar(false);
     }
-  };
+  }, []);
 
   // Load existing analysis if available
   useEffect(() => {
@@ -73,7 +72,7 @@ export const IssueAIInsights = ({ issue }: IssueAIInsightsProps) => {
     };
     
     loadAnalysis();
-  }, [issue.id]); // Added dependency
+  }, [issue.id, fetchAnalysis, fetchSimilarIssues]);
 
   if (!analysis && !isAnalyzing) {
     return (

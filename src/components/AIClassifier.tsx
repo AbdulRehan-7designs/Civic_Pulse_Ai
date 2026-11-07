@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Check } from "lucide-react";
@@ -21,7 +21,7 @@ const AIClassifier = ({ imageUrl, onClassify }: AIClassifierProps) => {
     setAnalysisComplete(false);
   }, [imageUrl]);
 
-  const analyzeImage = async () => {
+  const analyzeImage = useCallback(async () => {
     if (!imageUrl) return;
     
     setIsAnalyzing(true);
@@ -75,14 +75,14 @@ const AIClassifier = ({ imageUrl, onClassify }: AIClassifierProps) => {
       setIsAnalyzing(false);
       setAnalysisComplete(true);
     }
-  };
+  }, [imageUrl, onClassify]);
 
   useEffect(() => {
     // Auto-analyze image when it's first loaded
     if (imageUrl && !analysisComplete && !isAnalyzing && tags.length === 0) {
       analyzeImage();
     }
-  }, [imageUrl, analysisComplete]);
+  }, [imageUrl, analysisComplete, isAnalyzing, tags.length, analyzeImage]);
 
   if (!imageUrl) {
     return null;

@@ -82,23 +82,24 @@ export const useIssues = ({ autoFetch = true }: UseIssuesOptions = {}) => {
     try {
       const { data: authData, error: authError } = await supabase.auth.getUser();
       if (authError) throw authError;
-      if (!authData.user) throw new Error('Please sign in before voting.');
-      const { data: existingVote, error: lookupError } = await supabase.from('votes')
-        .select('id').eq('issue_id', issueId).eq('user_id', authData.user.id).maybeSingle();
-      if (lookupError) throw lookupError;
-      if (existingVote) {
-        toast({ title: 'Already voted', description: 'You have already voted on this issue.' });
-        return;
+      if (!authData.user) throw new Error('Please sign in before confirming a report.');
+
+      const { error: voteError } = await supabase.from('votes').insert({
+        issue_id: issueId, user_id: authData.user.id,
+      });
+      if (voteError) {
+        if (voteError.code === '23505') throw new Error('You have already confirmed this report.');
+        throw voteError;
       }
-      const { error: voteError } = await supabase.from('votes').insert({ issue_id: issueId, user_id: authData.user.id });
-      if (voteError) throw voteError;
-      const { error: incrementError } = await supabase.rpc('increment_votes', { issue_id: issueId });
-      if (incrementError) throw incrementError;
+
+      // Database trigger updates issues.votes atomically.
       await fetchIssues();
-      toast({ title: 'Vote recorded', description: 'Thank you for supporting this report.' });
+      toast({ title: 'Confirmation recorded', description: 'Thank you for helping verify this report.' });
+      return { data: true, error: null };
     } catch (error) {
-      console.error('Error voting on issue:', error);
-      toast({ title: 'Could not record vote', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' });
+      console.error('Error confirming report:', error);
+      toast({ title: 'Could not confirm report', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' });
+      return { data: null, error };
     }
   };
 

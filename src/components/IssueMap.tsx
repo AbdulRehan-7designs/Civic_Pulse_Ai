@@ -25,7 +25,8 @@ const IssueMap = ({ issues, onIssueSelect }: IssueMapProps) => {
 
   // In a real app, this would initialize the map with a proper mapping library
   useEffect(() => {
-    if (!mapRef.current) return;
+    const mapElement = mapRef.current;
+    if (!mapElement) return;
 
     // Add placeholder map - in a real app, initialize your map library here
     const mapPlaceholder = document.createElement('div');
@@ -73,15 +74,11 @@ const IssueMap = ({ issues, onIssueSelect }: IssueMapProps) => {
     });
     
     // Clear previous content and add the map
-    if (mapRef.current) {
-      mapRef.current.innerHTML = '';
-      mapRef.current.appendChild(mapPlaceholder);
-    }
+    mapElement.innerHTML = '';
+    mapElement.appendChild(mapPlaceholder);
     
     return () => {
-      if (mapRef.current) {
-        mapRef.current.innerHTML = '';
-      }
+      mapElement.innerHTML = '';
     };
   }, [issues, onIssueSelect]);
 

@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, memo } from 'react';
 import { Card } from '@/components/ui/card';
 import { MapPin } from 'lucide-react';
 import { Button } from './ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { loadGoogleMaps } from '@/utils/googleMapsLoader';
 
 interface Location {
@@ -28,7 +28,6 @@ const GoogleMapSelector = ({
   const markerRef = useRef<google.maps.Marker | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
 
   useEffect(() => {
     const initMap = async () => {

@@ -88,7 +88,7 @@ const IssueFilters = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="new">New</SelectItem>
+                <SelectItem value="reported">Reported</SelectItem>
                 <SelectItem value="verified">Verified</SelectItem>
                 <SelectItem value="in-progress">In Progress</SelectItem>
                 <SelectItem value="resolved">Resolved</SelectItem>

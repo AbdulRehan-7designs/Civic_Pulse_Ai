@@ -6,7 +6,8 @@ export interface IssueReport {
   title: string;
   description: string;
   category: string;
-  status: 'reported' | 'verified' | 'in-progress' | 'resolved';
+  status: 'reported' | 'verified' | 'in-progress' | 'resolved' | 'fake';
+  area?: string;
   reportedAt: string;
   reportedBy: string;
   votes: number;

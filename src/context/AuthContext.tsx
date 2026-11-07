@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
@@ -24,8 +24,8 @@ type AuthContextType = {
   user: User | null;
   profile: UserProfile | null;
   session: Session | null;
-  login: (email: string, password: string) => Promise<{ error?: any }>;
-  signUp: (email: string, password: string, userData: { username: string; full_name: string; role: UserRole }) => Promise<{ error?: any }>;
+  login: (email: string, password: string) => Promise<{ error?: unknown }>;
+  signUp: (email: string, password: string, userData: { username: string; full_name: string; role: UserRole }) => Promise<{ error?: unknown }>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   loading: boolean;
@@ -43,7 +43,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   // Fetch user profile
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (authUser: User) => {
+    const userId = authUser.id;
     try {
       // First, try to get profile from profiles table
       let profileData = null;
@@ -61,10 +62,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (error && error.code !== 'PGRST116' && error.code !== 'PGRST205') {
           console.warn('Error fetching profile:', error.message);
         }
-      } catch (err: any) {
-        // Don't log if it's just a table not found error
-        if (err.code !== 'PGRST205' && err.code !== 'PGRST116') {
-          console.warn('Exception fetching profile:', err.message);
+      } catch (err: unknown) {
+        // Don't log if it's just a table not found error.
+        const errorCode = typeof err === 'object' && err !== null && 'code' in err
+          ? err.code
+          : undefined;
+        if (errorCode !== 'PGRST205' && errorCode !== 'PGRST116') {
+          console.warn('Exception fetching profile:', err instanceof Error ? err.message : String(err));
         }
       }
 
@@ -73,8 +77,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       let role: UserRole = 'citizen';
       let isAdmin = false;
       let isOfficial = false;
-      let fullName = profileData?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
-      let username = profileData?.username || user?.user_metadata?.username || user?.email?.split('@')[0] || 'user';
+      const fullName = profileData?.full_name || authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User';
+      const username = profileData?.username || authUser.user_metadata?.username || authUser.email?.split('@')[0] || 'user';
 
       if (profileData?.is_admin === true) {
         role = 'admin';
@@ -86,7 +90,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       return {
         id: userId,
-        email: user?.email || '',
+        email: authUser.email || '',
         username: username,
         full_name: fullName,
         avatar_url: profileData?.avatar_url || null,
@@ -102,9 +106,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const role: UserRole = 'citizen';
       return {
         id: userId,
-        email: user?.email || '',
-        username: user?.email?.split('@')[0] || 'user',
-        full_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User',
+        email: authUser.email || '',
+        username: authUser.email?.split('@')[0] || 'user',
+        full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
         avatar_url: null,
         role: role,
         is_admin: false,
@@ -113,14 +117,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         issues_voted: 0,
       };
     }
-  };
+  }, []);
 
   // Initialize auth state
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
+        console.log('Auth state changed:', event, session?.user.email);
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -128,7 +132,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // Defer profile fetch with setTimeout to prevent deadlock
           setTimeout(async () => {
             try {
-              const userProfile = await fetchProfile(session.user.id);
+              const userProfile = await fetchProfile(session.user);
               setProfile(userProfile);
               
               // Auto-redirect based on role after login
@@ -164,7 +168,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (session?.user) {
         setTimeout(async () => {
           try {
-            const userProfile = await fetchProfile(session.user.id);
+            const userProfile = await fetchProfile(session.user);
             setProfile(userProfile);
             
             // Check current path and redirect if needed
@@ -189,7 +193,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchProfile, navigate]);
 
   const login = async (email: string, password: string) => {
     try {
@@ -209,7 +213,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       if (data.user) {
-        const userProfile = await fetchProfile(data.user.id);
+        const userProfile = await fetchProfile(data.user);
         setProfile(userProfile);
         
         // Determine role-based navigation
@@ -234,7 +238,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       return { error: null };
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Login Failed",
         description: "An unexpected error occurred.",
@@ -283,7 +287,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       return { error: null };
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Registration Failed",
         description: "An unexpected error occurred.",

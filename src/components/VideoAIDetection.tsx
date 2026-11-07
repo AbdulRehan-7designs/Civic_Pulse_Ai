@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { BrainCircuit, Camera, Loader2, Video } from 'lucide-react';
 import * as tf from '@tensorflow/tfjs';
 
@@ -27,7 +27,6 @@ const VideoAIDetection = ({ onDetectionResults }: VideoAIDetectionProps) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
-  const { toast } = useToast();
 
   // Load the COCO-SSD model on component mount
   useEffect(() => {
@@ -65,10 +64,11 @@ const VideoAIDetection = ({ onDetectionResults }: VideoAIDetectionProps) => {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error accessing camera:", err);
+      const errorName = err instanceof Error ? err.name : undefined;
       // Only show error if it's not a permission denial (user might have intentionally denied)
-      if (err.name !== 'NotAllowedError') {
+      if (errorName !== 'NotAllowedError') {
         toast({
           title: "Camera Error",
           description: "Unable to access camera. Please check permissions.",

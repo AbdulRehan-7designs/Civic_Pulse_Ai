@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { MapPin, Filter, X, Info } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { IssueReport } from '@/utils/mockData';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { loadGoogleMaps } from '@/utils/googleMapsLoader';
@@ -23,7 +23,6 @@ const LiveIssuesMap = ({ issues, onIssueSelect, height = '600px' }: LiveIssuesMa
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const { toast } = useToast();
 
   // Get unique categories and statuses
   const categories = ['all', ...new Set(issues.map(issue => issue.category))];
@@ -37,7 +36,7 @@ const LiveIssuesMap = ({ issues, onIssueSelect, height = '600px' }: LiveIssuesMa
   });
 
   // Get status color
-  const getStatusColor = (status: string): string => {
+  const getStatusColor = useCallback((status: string): string => {
     switch (status) {
       case 'reported': return '#fbbf24'; // yellow
       case 'verified': return '#3b82f6'; // blue
@@ -45,10 +44,10 @@ const LiveIssuesMap = ({ issues, onIssueSelect, height = '600px' }: LiveIssuesMa
       case 'resolved': return '#10b981'; // green
       default: return '#6b7280'; // gray
     }
-  };
+  }, []);
 
   // Get status icon URL
-  const getStatusIcon = (status: string): string => {
+  const getStatusIcon = useCallback((status: string): string => {
     const color = getStatusColor(status).replace('#', '');
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
       <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
@@ -56,7 +55,58 @@ const LiveIssuesMap = ({ issues, onIssueSelect, height = '600px' }: LiveIssuesMa
         <circle cx="16" cy="16" r="6" fill="white"/>
       </svg>
     `)}`;
-  };
+  }, [getStatusColor]);
+
+  const createMarker = useCallback((issue: IssueReport, position: { lat: number; lng: number }) => {
+    if (!googleMapRef.current) return;
+
+    const marker = new google.maps.Marker({
+      position,
+      map: googleMapRef.current,
+      title: issue.title,
+      icon: {
+        url: getStatusIcon(issue.status),
+        scaledSize: new google.maps.Size(32, 32),
+        anchor: new google.maps.Point(16, 16)
+      },
+      animation: google.maps.Animation.DROP
+    });
+
+    // Create info window content
+    const content = `
+      <div style="padding: 8px; min-width: 200px;">
+        <h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: bold;">${issue.title}</h3>
+        <p style="margin: 0 0 8px 0; font-size: 12px; color: #666;">${issue.category}</p>
+        <p style="margin: 0 0 8px 0; font-size: 11px; color: #999;">${issue.description.substring(0, 100)}...</p>
+        <div style="display: flex; gap: 4px; margin-top: 8px;">
+          <span style="background: ${getStatusColor(issue.status)}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px;">
+            ${issue.status}
+          </span>
+          <span style="background: #e5e7eb; padding: 2px 8px; border-radius: 4px; font-size: 10px;">
+            ${issue.votes} votes
+          </span>
+        </div>
+      </div>
+    `;
+
+    const infoWindow = new google.maps.InfoWindow({
+      content
+    });
+
+    marker.addListener('click', () => {
+      // Close all other info windows
+      infoWindowsRef.current.forEach(iw => iw.close());
+      
+      infoWindow.open(googleMapRef.current, marker);
+      
+      if (onIssueSelect) {
+        onIssueSelect(issue);
+      }
+    });
+
+    markersRef.current.push(marker);
+    infoWindowsRef.current.push(infoWindow);
+  }, [onIssueSelect, getStatusIcon, getStatusColor]);
 
   // Initialize map
   useEffect(() => {
@@ -141,58 +191,7 @@ const LiveIssuesMap = ({ issues, onIssueSelect, height = '600px' }: LiveIssuesMa
     if (bounds.getNorthEast().lat() !== bounds.getSouthWest().lat()) {
       googleMapRef.current.fitBounds(bounds);
     }
-  }, [filteredIssues, isLoaded]);
-
-  const createMarker = (issue: IssueReport, position: { lat: number; lng: number }) => {
-    if (!googleMapRef.current) return;
-
-    const marker = new google.maps.Marker({
-      position,
-      map: googleMapRef.current,
-      title: issue.title,
-      icon: {
-        url: getStatusIcon(issue.status),
-        scaledSize: new google.maps.Size(32, 32),
-        anchor: new google.maps.Point(16, 16)
-      },
-      animation: google.maps.Animation.DROP
-    });
-
-    // Create info window content
-    const content = `
-      <div style="padding: 8px; min-width: 200px;">
-        <h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: bold;">${issue.title}</h3>
-        <p style="margin: 0 0 8px 0; font-size: 12px; color: #666;">${issue.category}</p>
-        <p style="margin: 0 0 8px 0; font-size: 11px; color: #999;">${issue.description.substring(0, 100)}...</p>
-        <div style="display: flex; gap: 4px; margin-top: 8px;">
-          <span style="background: ${getStatusColor(issue.status)}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px;">
-            ${issue.status}
-          </span>
-          <span style="background: #e5e7eb; padding: 2px 8px; border-radius: 4px; font-size: 10px;">
-            ${issue.votes} votes
-          </span>
-        </div>
-      </div>
-    `;
-
-    const infoWindow = new google.maps.InfoWindow({
-      content
-    });
-
-    marker.addListener('click', () => {
-      // Close all other info windows
-      infoWindowsRef.current.forEach(iw => iw.close());
-      
-      infoWindow.open(googleMapRef.current, marker);
-      
-      if (onIssueSelect) {
-        onIssueSelect(issue);
-      }
-    });
-
-    markersRef.current.push(marker);
-    infoWindowsRef.current.push(infoWindow);
-  };
+  }, [filteredIssues, isLoaded, createMarker]);
 
   return (
     <Card className="w-full overflow-hidden">

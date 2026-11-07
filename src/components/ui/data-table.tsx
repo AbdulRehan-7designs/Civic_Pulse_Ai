@@ -41,7 +41,7 @@ export function DataTable<TData, TValue>({
   // Reset pagination when data changes
   useEffect(() => {
     table.resetPageIndex(true);
-  }, [data]);
+  }, [data, table]);
 
   return (
     <div>

@@ -47,7 +47,7 @@ export const loadGoogleMaps = async (libraries: string[] = []): Promise<typeof g
   const loader = new Loader({
     apiKey: GOOGLE_MAPS_API_KEY,
     version: "weekly",
-    libraries: librariesToLoad as any
+    libraries: ['places', 'geometry', 'visualization']
   });
 
   // Load and cache the promise
