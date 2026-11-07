@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
@@ -39,16 +39,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const userRef = useRef(user);
-
-  useEffect(() => {
-    userRef.current = user;
-  }, [user]);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   // Fetch user profile
-  const fetchProfile = useCallback(async (userId: string) => {
+  const fetchProfile = useCallback(async (authUser: User) => {
+    const userId = authUser.id;
     try {
       // First, try to get profile from profiles table
       let profileData = null;
@@ -81,8 +77,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       let role: UserRole = 'citizen';
       let isAdmin = false;
       let isOfficial = false;
-      const fullName = profileData?.full_name || userRef.current?.user_metadata?.full_name || userRef.current?.email?.split('@')[0] || 'User';
-      const username = profileData?.username || userRef.current?.user_metadata?.username || userRef.current?.email?.split('@')[0] || 'user';
+      const fullName = profileData?.full_name || authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User';
+      const username = profileData?.username || authUser.user_metadata?.username || authUser.email?.split('@')[0] || 'user';
 
       if (profileData?.is_admin === true) {
         role = 'admin';
@@ -94,7 +90,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       return {
         id: userId,
-        email: userRef.current?.email || '',
+        email: authUser.email || '',
         username: username,
         full_name: fullName,
         avatar_url: profileData?.avatar_url || null,
@@ -110,9 +106,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const role: UserRole = 'citizen';
       return {
         id: userId,
-        email: userRef.current?.email || '',
-        username: userRef.current?.email?.split('@')[0] || 'user',
-        full_name: userRef.current?.user_metadata?.full_name || userRef.current?.email?.split('@')[0] || 'User',
+        email: authUser.email || '',
+        username: authUser.email?.split('@')[0] || 'user',
+        full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
         avatar_url: null,
         role: role,
         is_admin: false,
@@ -128,7 +124,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.userRef.current?.email);
+        console.log('Auth state changed:', event, session?.user.email);
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -136,7 +132,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // Defer profile fetch with setTimeout to prevent deadlock
           setTimeout(async () => {
             try {
-              const userProfile = await fetchProfile(session.user.id);
+              const userProfile = await fetchProfile(session.user);
               setProfile(userProfile);
               
               // Auto-redirect based on role after login
@@ -172,7 +168,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (session?.user) {
         setTimeout(async () => {
           try {
-            const userProfile = await fetchProfile(session.user.id);
+            const userProfile = await fetchProfile(session.user);
             setProfile(userProfile);
             
             // Check current path and redirect if needed
@@ -217,7 +213,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       if (data.user) {
-        const userProfile = await fetchProfile(data.user.id);
+        const userProfile = await fetchProfile(data.user);
         setProfile(userProfile);
         
         // Determine role-based navigation
