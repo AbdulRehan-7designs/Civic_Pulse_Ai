@@ -1,5 +1,10 @@
 # Civic Pulse AI
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Open%20App-2ea44f?style=for-the-badge)](https://civic-pulse-ai-psi.vercel.app)
+
+**Live application:** https://civic-pulse-ai-psi.vercel.app
+
+
 A prototype civic-issue reporting and community-awareness application built with React, TypeScript, Vite, Supabase integrations, and experimental AI workflows.
 
 The project explores how residents can document local infrastructure problems, attach media and location details, and how civic teams could review issue reports through role-based dashboards.
@@ -80,9 +85,18 @@ Other limitations visible in the source:
 - The issue-detail AI analysis button currently simulates a successful analysis instead of invoking the analysis hook.
 - The `useAIAnalysis.analyzeImage` helper returns random mock tags.
 - Some Supabase migration files in the repository are empty. A fresh Supabase project may therefore require a complete, verified schema migration before it can run.
-- The project has no verified production deployment or benchmark results documented here.
+- The frontend is deployed on Vercel at [civic-pulse-ai-psi.vercel.app](https://civic-pulse-ai-psi.vercel.app). Deployment status is `READY`; end-to-end user flows have not yet been independently verified.
 - The AI image-analysis function uses a Gemini vision model identifier that should be checked against the currently supported Gemini API models.
 - Browser-side publishable/anonymous Supabase keys are not service-role secrets, but production access must be protected by correct Row Level Security policies. Never place a Supabase service-role key or Gemini API key in frontend code.
+
+## Live deployment
+
+- **Application:** [https://civic-pulse-ai-psi.vercel.app](https://civic-pulse-ai-psi.vercel.app)
+- **Hosting:** Vercel
+- **Source repository:** [AbdulRehan-7designs/Civic_Pulse_Ai](https://github.com/AbdulRehan-7designs/Civic_Pulse_Ai)
+- **Production branch:** `main`
+
+The Vercel production deployment is live. A successful deployment confirms that the frontend build was published; it does not by itself confirm that registration, login, issue submission, database persistence, maps, or AI analysis are all working. Those flows should be tested in the deployed app before describing them as production-validated.
 
 ## Local development
 
