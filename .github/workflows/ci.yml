@@ -28,6 +28,8 @@ jobs:
         run: |
           npm audit --json > npm-audit.json || true
           node -e 'const report = JSON.parse(require("fs").readFileSync("npm-audit.json", "utf8")); console.log("Audit summary:", JSON.stringify(report.metadata?.vulnerabilities ?? {})); for (const [name, item] of Object.entries(report.vulnerabilities ?? {})) { const fixes = item.fixAvailable; console.log(name + " | " + item.severity + " | direct=" + item.isDirect + " | fix=" + JSON.stringify(fixes)); for (const via of item.via ?? []) { if (typeof via === "object") console.log("  advisory: " + via.title + " | range=" + via.range + " | url=" + via.url); } }'
+      - name: Type-check TypeScript
+        run: npx tsc -b --pretty false
       - name: Run ESLint
         run: npm run lint
       - name: Build production bundle
